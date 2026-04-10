@@ -61,6 +61,8 @@ nav button.on{color:var(--txt);border-bottom-color:var(--t1)}
 .fail-btn.on{background:rgba(245,106,106,.12);border-color:var(--red);color:var(--red)}
 .del-btn{background:none;border:none;cursor:pointer;color:var(--dim);font-size:18px;padding:0 2px;line-height:1;flex-shrink:0}
 .del-btn:hover{color:var(--red)}
+.move-btn{background:none;border:none;cursor:pointer;color:var(--dim);font-size:14px;padding:0 1px;line-height:1;flex-shrink:0}
+.move-btn:hover{color:var(--mut)}
 .add-btn{width:100%;padding:9px;border:1px dashed var(--bdr);border-radius:10px;background:none;cursor:pointer;font-size:12px;color:var(--dim);font-family:'Syne',sans-serif;margin-top:4px}
 .iform{background:var(--surf2);border:1px solid var(--bdr);border-radius:12px;padding:14px;margin-bottom:10px}
 .iform-ttl{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
@@ -145,6 +147,27 @@ textarea:focus{border-color:var(--t1)}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .empty{font-size:13px;color:var(--dim);padding:8px 0}
 .cbtn{font-size:11px;padding:6px 14px;border-radius:8px;border:1px solid var(--bdr);background:none;cursor:pointer;color:var(--mut);font-family:'Syne',sans-serif;margin-top:12px}
+.skill-tree{background:var(--surf);border:1px solid var(--bdr);border-radius:14px;padding:14px;margin-bottom:12px}
+.skill-tree-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.skill-icon{font-size:20px;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.skill-tree-name{font-size:14px;font-weight:700}
+.skill-tree-lvl{font-family:'DM Mono',monospace;font-size:11px;color:var(--mut);margin-top:1px}
+.skill-xp-bar{height:4px;background:var(--surf2);border-radius:4px;overflow:hidden;margin-bottom:12px}
+.skill-xp-fill{height:100%;border-radius:4px;transition:width .4s}
+.skill-nodes{display:flex;gap:8px;flex-wrap:wrap}
+.skill-node{border-radius:10px;padding:8px 10px;font-size:11px;border:1px solid var(--bdr);background:var(--surf2);flex:1;min-width:80px;text-align:center;transition:all .2s}
+.skill-node.unlocked{background:rgba(200,245,106,.08);border-color:rgba(200,245,106,.3)}
+.skill-node.locked{opacity:.4}
+.skill-node-name{font-weight:600;font-size:11px;margin-bottom:2px}
+.skill-node-req{font-size:10px;color:var(--mut)}
+.ach-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px}
+.ach{background:var(--surf);border:1px solid var(--bdr);border-radius:12px;padding:12px;display:flex;gap:10px;align-items:flex-start;transition:all .2s}
+.ach.earned{border-color:rgba(200,245,106,.3);background:rgba(200,245,106,.04)}
+.ach.locked{opacity:.35}
+.ach-icon{font-size:22px;flex-shrink:0;line-height:1}
+.ach-name{font-size:12px;font-weight:700;margin-bottom:2px}
+.ach-desc{font-size:11px;color:var(--mut);line-height:1.4}
+.ach-earned-lbl{font-size:10px;color:var(--t1);font-family:'DM Mono',monospace;margin-top:3px}
 input[type=range]{accent-color:var(--t1);width:100%}
 </style>
 </head>
@@ -163,10 +186,18 @@ input[type=range]{accent-color:var(--t1);width:100%}
   <button onclick="show('week')">Week</button>
   <button onclick="show('history')">History</button>
   <button onclick="show('rewards')">Rewards</button>
+  <button onclick="show('skills')">Skills</button>
   <button onclick="show('mood')">Mood</button>
   <button onclick="show('data')">Data</button>
 </nav>
 <div class="page on" id="p-today">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <span style="font-size:12px;color:var(--mut);font-family:'DM Mono',monospace;flex-shrink:0">Viewing:</span>
+    <input type="date" id="active-date" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--txt);outline:none;font-family:'DM Mono',monospace;flex:1" onchange="onActiveDateChange()">
+    <button onclick="setActiveDate(0)" style="font-size:11px;padding:5px 11px;border-radius:8px;border:1px solid var(--bdr);background:none;cursor:pointer;color:var(--mut);font-family:'DM Mono',monospace;white-space:nowrap">Today</button>
+    <button onclick="setActiveDate(-1)" style="font-size:11px;padding:5px 11px;border-radius:8px;border:1px solid var(--bdr);background:none;cursor:pointer;color:var(--mut);font-family:'DM Mono',monospace;white-space:nowrap">Yesterday</button>
+  </div>
+  <div id="active-date-banner" style="display:none;background:rgba(106,180,245,.08);border:1px solid rgba(106,180,245,.2);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--t2);font-family:'DM Mono',monospace"></div>
   <div class="mets mets4">
     <div class="met"><div class="met-l">Today XP</div><div class="met-v" id="m-txp">0</div></div>
     <div class="met"><div class="met-l">Done</div><div class="met-v" id="m-done">0/0</div></div>
@@ -293,6 +324,12 @@ input[type=range]{accent-color:var(--t1);width:100%}
   <p class="slbl">Today's mood entries</p>
   <div id="mood-log"></div>
 </div>
+<div class="page" id="p-skills">
+  <p class="slbl" style="margin-top:0">Skill trees</p>
+  <div id="skill-trees"></div>
+  <p class="slbl">Achievements</p>
+  <div id="achievements"></div>
+</div>
 <div class="page" id="p-data">
   <p class="slbl" style="margin-top:0">Backup and restore</p>
   <div class="data-card">
@@ -332,6 +369,38 @@ var XPL=500,S={},selMood=null,charts={};
 function xe(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function p2(n){return String(n).padStart(2,'0');}
 function dk(){var d=new Date();return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
+var activeDate='';
+
+function getActiveDate(){return activeDate||dk();}
+
+function setActiveDate(offset){
+  var d=new Date();d.setDate(d.getDate()+offset);
+  activeDate=d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+  var el=document.getElementById('active-date');
+  if(el)el.value=activeDate;
+  updateActiveDateBanner();
+  renderToday();
+}
+
+function onActiveDateChange(){
+  var el=document.getElementById('active-date');
+  activeDate=el?el.value:dk();
+  updateActiveDateBanner();
+  renderToday();
+}
+
+function updateActiveDateBanner(){
+  var banner=document.getElementById('active-date-banner');
+  if(!banner)return;
+  var ad=getActiveDate(),today=dk();
+  if(ad===today){banner.style.display='none';return;}
+  var p=ad.split('-'),d=new Date(+p[0],+p[1]-1,+p[2]);
+  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  banner.style.display='block';
+  banner.textContent='Viewing: '+days[d.getDay()]+' '+months[d.getMonth()]+' '+p[2]+' — changes will be saved to this date';
+}
+
 function wkStart(off){
   off=off||0;var d=new Date(),dy=d.getDay(),m=new Date(d);
   m.setDate(d.getDate()-dy+(dy===0?-6:1)+off*7);
@@ -375,7 +444,7 @@ function defState(){
 }
 
 function tlog(){
-  var t=dk();
+  var t=getActiveDate();
   if(!S.dailyLog[t])S.dailyLog[t]={completed:[],failed:[],xpEarned:0,moodEntries:[],workSessions:[]};
   var l=S.dailyLog[t];
   if(!l.failed)l.failed=[];if(!l.workSessions)l.workSessions=[];if(!l.moodEntries)l.moodEntries=[];
@@ -407,7 +476,7 @@ function load(){
   S.lastDate=t;show('today');
 }
 
-var TABS=['today','work','week','history','rewards','mood','data'];
+var TABS=['today','work','week','history','rewards','skills','mood','data'];
 function show(name){
   TABS.forEach(function(n,i){
     document.getElementById('p-'+n).classList.toggle('on',n===name);
@@ -418,6 +487,7 @@ function show(name){
   if(name==='week')renderWeek();
   if(name==='history')renderHistory();
   if(name==='rewards')renderRewards();
+  if(name==='skills')renderSkills();
   if(name==='mood')renderMood();
   if(name==='data')renderDataPage();
 }
@@ -445,11 +515,36 @@ function habitHTML(h){
     +(h.min?'<span class="hmin">MIN</span>':'')
     +(fail?'<span class="hfail">failed</span>':'')
     +'</div></div>'
-    +'<div class="hbtns">'+fb+'<button class="del-btn" onclick="event.stopPropagation();delHabit('+h.id+')">x</button></div>'
+    +'<div class="hbtns">'
+    +'<button class="move-btn" onclick="event.stopPropagation();moveHabit('+h.id+',-1)" title="Move up">&#8593;</button>'
+    +'<button class="move-btn" onclick="event.stopPropagation();moveHabit('+h.id+',1)" title="Move down">&#8595;</button>'
+    +fb
+    +'<button class="del-btn" onclick="event.stopPropagation();delHabit('+h.id+')">x</button>'
+    +'</div>'
     +'</div>';
 }
 
+function moveHabit(id,dir){
+  // find index within same tier
+  var h=null;S.habits.forEach(function(x){if(x.id===id)h=x;});if(!h)return;
+  var tier=S.habits.filter(function(x){return x.tier===h.tier;});
+  var globalIdx=S.habits.indexOf(h);
+  var tierIdx=tier.indexOf(h);
+  var newTierIdx=tierIdx+dir;
+  if(newTierIdx<0||newTierIdx>=tier.length)return;
+  var swapWith=tier[newTierIdx];
+  var swapGlobalIdx=S.habits.indexOf(swapWith);
+  // swap in main array
+  S.habits[globalIdx]=swapWith;
+  S.habits[swapGlobalIdx]=h;
+  save();renderToday();
+}
+
 function renderToday(){
+  // init date picker to today if not set
+  var dp=document.getElementById('active-date');
+  if(dp&&!dp.value){activeDate=dk();dp.value=activeDate;}
+  updateActiveDateBanner();
   renderHeader();
   var log=tlog();
   var t1=S.habits.filter(function(h){return h.tier===1;});
@@ -831,6 +926,167 @@ function doImport(input){
     }catch(err){document.getElementById('import-status').textContent='Error: '+err.message;}
   };
   reader.readAsText(file);
+}
+
+// ── SKILL TREES & ACHIEVEMENTS ──────────────────────────────────────────────
+
+var SKILL_TREES=[
+  {
+    id:'dating',name:'Dating',icon:'🎯',color:'#f56ab4',
+    habitIds:[202,302,303,203,204],
+    levels:['Novice','Approach Taker','Social Animal','Player','Elite'],
+    xpPerLevel:200,
+    nodes:[
+      {name:'Approach anxiety broken',req:'5 daygame days',xp:100},
+      {name:'Consistent opener',req:'20 total approaches',xp:200},
+      {name:'Night game confident',req:'5 nights out',xp:300},
+      {name:'Online dialed in',req:'30 days messaging',xp:400},
+      {name:'Full system mastery',req:'Level 5',xp:500}
+    ]
+  },
+  {
+    id:'content',name:'Content',icon:'🎬',color:'#6ab4f5',
+    habitIds:[205,304],
+    levels:['Creator','Consistent','Growing','Authority','Viral'],
+    xpPerLevel:200,
+    nodes:[
+      {name:'First video posted',req:'Post 1 video',xp:50},
+      {name:'7-day posting streak',req:'7 days straight',xp:150},
+      {name:'Short-form machine',req:'21 shorts posted',xp:300},
+      {name:'Community builder',req:'30 Skool posts',xp:400},
+      {name:'Full content engine',req:'Level 5',xp:500}
+    ]
+  },
+  {
+    id:'discipline',name:'Discipline',icon:'🧠',color:'#c8f56a',
+    habitIds:[101,103,104,105],
+    levels:['Starting','Building','Solid','Iron','Unbreakable'],
+    xpPerLevel:300,
+    nodes:[
+      {name:'Sober 30 days',req:'30 day sobriety',xp:100},
+      {name:'Journal habit locked',req:'14 journal days',xp:150},
+      {name:'No unearned content',req:'21 clean days',xp:250},
+      {name:'Diet dialed',req:'30 clean eating days',xp:350},
+      {name:'Full floor mastery',req:'Level 5',xp:500}
+    ]
+  },
+  {
+    id:'body',name:'Body',icon:'💪',color:'#f5a86a',
+    habitIds:[305,102],
+    levels:['Inactive','Moving','Active','Athletic','Peak'],
+    xpPerLevel:150,
+    nodes:[
+      {name:'First gym week',req:'7 gym days',xp:75},
+      {name:'Walk habit locked',req:'14 walk days',xp:100},
+      {name:'30-day gym streak',req:'30 gym days',xp:200},
+      {name:'Consistent walker',req:'60 walk days',xp:300},
+      {name:'Physical peak',req:'Level 5',xp:400}
+    ]
+  }
+];
+
+var ACHIEVEMENTS=[
+  {id:'sober30',icon:'🏆',name:'30 Days Sober',desc:'30 consecutive sobriety check-ins',check:function(s){return s.soberDays>=30;}},
+  {id:'sober100',icon:'💎',name:'100 Days Sober',desc:'100 consecutive days clean',check:function(s){return s.soberDays>=100;}},
+  {id:'streak7',icon:'🔥',name:'Week Warrior',desc:'7-day habit streak',check:function(s){return s.streak>=7;}},
+  {id:'streak30',icon:'⚡',name:'Month of Momentum',desc:'30-day habit streak',check:function(s){return s.streak>=30;}},
+  {id:'lvl5',icon:'🌟',name:'Level 5',desc:'Reach level 5',check:function(s){return s.level>=5;}},
+  {id:'lvl10',icon:'👑',name:'Level 10',desc:'Reach level 10',check:function(s){return s.level>=10;}},
+  {id:'xp1000',icon:'💰',name:'XP Millionaire',desc:'Earn 1000 total XP',check:function(s){return s.xp>=1000;}},
+  {id:'xp5000',icon:'🚀',name:'XP Legend',desc:'Earn 5000 total XP',check:function(s){return s.xp>=5000;}},
+  {id:'perfectday',icon:'✨',name:'Perfect Day',desc:'Complete every single habit in a day',check:function(s){
+    var dates=Object.keys(s.dailyLog);
+    return dates.some(function(d){var l=s.dailyLog[d];return l.completed&&l.completed.length>=s.habits.length&&s.habits.length>0;});
+  }},
+  {id:'perfectweek',icon:'🎯',name:'Perfect Week',desc:'Complete all floor habits every day for 7 days',check:function(s){
+    var t1=s.habits.filter(function(h){return h.tier===1;});
+    if(!t1.length)return false;
+    var dates=Object.keys(s.dailyLog).sort().slice(-7);
+    if(dates.length<7)return false;
+    return dates.every(function(d){
+      var l=s.dailyLog[d]||{completed:[]};
+      return t1.every(function(h){return l.completed.indexOf(h.id)!==-1;});
+    });
+  }},
+  {id:'workhorse',icon:'🏗️',name:'Workhorse',desc:'Log 8+ hours in a single day',check:function(s){
+    return Object.keys(s.dailyLog).some(function(d){
+      var l=s.dailyLog[d]||{workSessions:[]};
+      return (l.workSessions||[]).reduce(function(a,ws){return a+ws.hrs;},0)>=8;
+    });
+  }},
+  {id:'nightgamer',icon:'🌙',name:'Night Owl',desc:'Complete nightgame habit 10 times',check:function(s){
+    return Object.keys(s.dailyLog).filter(function(d){
+      return (s.dailyLog[d].completed||[]).indexOf(303)!==-1;
+    }).length>=10;
+  }},
+  {id:'daygamer',icon:'☀️',name:'Daylight Killer',desc:'Complete daygame 20 times',check:function(s){
+    return Object.keys(s.dailyLog).filter(function(d){
+      return (s.dailyLog[d].completed||[]).indexOf(202)!==-1;
+    }).length>=20;
+  }},
+  {id:'meditator',icon:'🧘',name:'Mind Master',desc:'Meditate 30 times',check:function(s){
+    return Object.keys(s.dailyLog).filter(function(d){
+      return (s.dailyLog[d].completed||[]).indexOf(309)!==-1;
+    }).length>=30;
+  }}
+];
+
+function getSkillXP(tree){
+  var total=0;
+  Object.keys(S.dailyLog).forEach(function(d){
+    var l=S.dailyLog[d]||{completed:[]};
+    tree.habitIds.forEach(function(id){
+      if((l.completed||[]).indexOf(id)!==-1){
+        var h=null;S.habits.forEach(function(x){if(x.id===id)h=x;});
+        if(h)total+=h.xp;
+      }
+    });
+  });
+  return total;
+}
+
+function renderSkills(){
+  // Skill trees
+  var treesEl=document.getElementById('skill-trees');
+  treesEl.innerHTML=SKILL_TREES.map(function(tree){
+    var xp=getSkillXP(tree);
+    var lvl=Math.min(tree.levels.length-1,Math.floor(xp/tree.xpPerLevel));
+    var lvlXP=xp%(tree.xpPerLevel);
+    var pct=Math.round((lvlXP/tree.xpPerLevel)*100);
+    var nodes=tree.nodes.map(function(node,i){
+      var unlocked=xp>=node.xp;
+      return '<div class="skill-node'+(unlocked?' unlocked':' locked')+'">'
+        +'<div class="skill-node-name">'+xe(node.name)+'</div>'
+        +'<div class="skill-node-req">'+(unlocked?'Unlocked':xe(node.req))+'</div>'
+        +'</div>';
+    }).join('');
+    return '<div class="skill-tree">'
+      +'<div class="skill-tree-head">'
+      +'<div class="skill-icon" style="background:rgba(255,255,255,.05)">'+tree.icon+'</div>'
+      +'<div><div class="skill-tree-name" style="color:'+tree.color+'">'+xe(tree.name)+'</div>'
+      +'<div class="skill-tree-lvl">'+tree.levels[lvl]+' &middot; Level '+(lvl+1)+' &middot; '+xp+' XP</div></div>'
+      +'</div>'
+      +'<div class="skill-xp-bar"><div class="skill-xp-fill" style="width:'+pct+'%;background:'+tree.color+'"></div></div>'
+      +'<div class="skill-nodes">'+nodes+'</div>'
+      +'</div>';
+  }).join('');
+
+  // Achievements
+  var earned=[],locked=[];
+  ACHIEVEMENTS.forEach(function(a){
+    var isEarned=false;
+    try{isEarned=a.check(S);}catch(e){}
+    var html='<div class="ach'+(isEarned?' earned':' locked')+'">'
+      +'<div class="ach-icon">'+a.icon+'</div>'
+      +'<div><div class="ach-name">'+xe(a.name)+'</div>'
+      +'<div class="ach-desc">'+xe(a.desc)+'</div>'
+      +(isEarned?'<div class="ach-earned-lbl">Earned</div>':'')
+      +'</div></div>';
+    if(isEarned)earned.push(html);else locked.push(html);
+  });
+  document.getElementById('achievements').innerHTML=
+    '<div class="ach-grid">'+earned.join('')+'</div>'
+    +(locked.length?'<p class="slbl" style="margin-top:8px">Locked</p><div class="ach-grid">'+locked.join('')+'</div>':'');
 }
 
 function toast(msg){
