@@ -273,8 +273,10 @@ input[type=range]{accent-color:var(--t1);width:100%}
   <button class="cbtn" onclick="cbtPrompt()">Get CBT reflection</button>
 </div>
 <div class="page" id="p-rewards">
-  <p class="slbl" style="margin-top:0">Your rewards</p>
-  <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Complete habits, earn XP, unlock rewards.</p>
+  <p class="slbl" style="margin-top:0">Rewards</p>
+  <p style="font-size:13px;color:var(--mut);margin-bottom:16px;line-height:1.6">Set a goal, earn it, claim it. Each reward is tied to a specific milestone — approaches, sales, XP, or streak.</p>
+  <div id="counters-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px"></div>
+  <button onclick="openAddCounter()" style="width:100%;padding:7px;border:1px dashed var(--bdr);border-radius:8px;background:none;cursor:pointer;font-size:12px;color:var(--dim);font-family:inherit;margin-bottom:16px">+ add custom counter</button>
   <div id="rewards-list"></div>
   <button class="add-btn" onclick="openAddReward()">+ add reward</button>
 </div>
@@ -432,10 +434,16 @@ function defState(){
       {id:309,tier:3,name:'Meditate 30 minutes',xp:20,streak:0,canFail:false}
     ],
     rewards:[
-      {id:1,name:'Binge-watch TV day',cost:300,unlocked:false},
-      {id:2,name:'Dinner at Fogo de Chao',cost:500,unlocked:false},
-      {id:3,name:'New book or gear',cost:200,unlocked:false}
+      {id:1,name:'Cirque du Soleil',conditions:[{metric:'approaches',target:50}],claimed:false,note:'50 approaches on the sprint'},
+      {id:2,name:'Full day off — no work guilt',conditions:[{metric:'approaches',target:25}],claimed:false,note:'25 approaches completed'},
+      {id:3,name:'Nice dinner out',conditions:[{metric:'sales',target:10}],claimed:false,note:'10 course sales'},
+      {id:4,name:'Something you have been wanting to buy',conditions:[{metric:'streak',target:30}],claimed:false,note:'30-day sober streak'},
+      {id:5,name:'Full rest day — zero obligations',conditions:[{metric:'xp',target:2000}],claimed:false,note:'2000 total XP earned'}
     ],
+    sales:0,
+    approachCount:0,
+    soberDays:0,
+    customCounters:[],
     dailyLog:{}};
 }
 
@@ -546,6 +554,7 @@ function renderToday(){
   document.getElementById('m-done').textContent=log.completed.length+'/'+S.habits.length;
   document.getElementById('m-streak').textContent=S.streak;
   document.getElementById('m-xp').textContent=S.xp;
+
   document.getElementById('habits-list').innerHTML=S.habits.map(habitHTML).join('');
 }
 
@@ -726,6 +735,437 @@ function cbtPrompt(){
   if(typeof sendPrompt==='function')sendPrompt('Can you give me a CBT-based reflection on my habit tracker progress? This week: '+cur.xp+' XP, '+cur.pct+'% completion. Last week: '+prv.xp+' XP, '+prv.pct+'% completion.');
 }
 
+function getMetricValue(metric){
+  if(!metric) return 0;
+  if(metric==='xp') return S.xp||0;
+  if(metric==='streak') return S.soberDays||S.streak||0;
+  if(metric==='approaches') return S.approachCount||0;
+  if(metric==='sales') return S.sales||0;
+  return 0;
+}
+
+function metricLabel(metric){
+  return {xp:'XP',streak:'sober days',approaches:'approaches',sales:'sales'}[metric]||metric;
+}
+
+function rewardUnlocked(r){
+  // Handle old XP-cost format
+  if(r.cost!==undefined&&!r.conditions&&!r.metric) return S.xp>=r.cost;
+  // Support both old single-metric and new multi-condition format
+  var conditions=r.conditions||(r.metric?[{metric:r.metric,target:r.target}]:[]);
+  if(!conditions.length) return false;
+  return conditions.every(function(c){return c.metric&&getMetricValue(c.metric)>=(c.target||0);});
+}
+
+function rewardProgress(r){
+  if(r.cost!==undefined&&!r.conditions&&!r.metric) return Math.min(100,Math.round((S.xp/r.cost)*100));
+  var conditions=r.conditions||(r.metric?[{metric:r.metric,target:r.target}]:[]);
+  if(!conditions.length) return 0;
+  var min=100;
+  conditions.forEach(function(c){
+    if(!c.metric||!c.target) return;
+    var pct=Math.min(100,Math.round((getMetricValue(c.metric)/c.target)*100));
+    if(pct<min)min=pct;
+  });
+  return min;
+}
+
+function conditionLabel(c){
+  return getMetricValue(c.metric)+' / '+c.target+' '+metricLabel(c.metric);
+}
+
+function renderRewards(){
+  renderCounters();
+
+  var unlocked=S.rewards.filter(function(r){return !r.claimed&&rewardUnlocked(r);});
+  var locked=S.rewards.filter(function(r){return !r.claimed&&!rewardUnlocked(r);});
+  var claimed=S.rewards.filter(function(r){return r.claimed;});
+
+  var html='';
+
+  if(unlocked.length){
+    html+='<p class="slbl" style="color:var(--t1);margin-bottom:8px">Ready to claim</p>';
+    html+=unlocked.map(function(r){
+      var conditions=r.conditions||[{metric:r.metric,target:r.target}];
+      return '<div class="rcard" style="border-color:rgba(200,245,106,.3);background:rgba(200,245,106,.04)">'
+        +'<div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px">'+xe(r.name)+'</div>'
+        +'<div style="font-size:12px;color:var(--mut);margin-bottom:8px">'+xe(r.note)+'</div>'
+        +conditions.map(function(c){
+          return '<div style="font-size:11px;color:var(--t1);font-family:monospace;margin-bottom:4px">'+conditionLabel(c)+' ✓</div>';
+        }).join('')
+        +'<div class="rprog" style="margin-top:6px"><div class="rpf" style="width:100%;background:var(--t1)"></div></div>'
+        +'<div class="rfoot" style="margin-top:8px">'
+        +(r.xpCost?'<span style="font-size:11px;font-family:monospace;color:var(--mut)">costs '+r.xpCost+' XP</span>':'<span></span>')
+        +'<button class="ubtn" style="background:var(--t1);color:#0d0d0f;border:none" onclick="claimReward('+r.id+')">Claim'+(r.xpCost?' (-'+r.xpCost+' XP)':'')+'</button>'
+        +'</div></div>';
+    }).join('');
+  }
+
+  if(locked.length){
+    html+='<p class="slbl" style="margin-top:'+(unlocked.length?16:0)+'px;margin-bottom:8px">In progress</p>';
+    html+=locked.map(function(r){
+      var conditions=r.conditions||[{metric:r.metric,target:r.target}];
+      var pct=rewardProgress(r);
+      return '<div class="rcard">'
+        +'<div style="font-size:14px;font-weight:600;margin-bottom:4px">'+xe(r.name)+'</div>'
+        +'<div style="font-size:12px;color:var(--mut);margin-bottom:8px">'+xe(r.note)+'</div>'
+        +conditions.map(function(c){
+          var cp=Math.min(100,Math.round((getMetricValue(c.metric)/c.target)*100));
+          var done=cp>=100;
+          return '<div style="font-size:11px;font-family:monospace;margin-bottom:4px;color:'+(done?'var(--t1)':'var(--mut)')+'">'+conditionLabel(c)+(done?' ✓':'')+'</div>';
+        }).join('')
+        +'<div class="rprog" style="margin-top:6px"><div class="rpf" style="width:'+pct+'%"></div></div>'
+        +'<div class="rfoot" style="margin-top:6px">'
+        +'<span style="font-size:12px;font-family:monospace;color:var(--mut)">'+pct+'% overall</span>'
+        +'<button class="del-btn" onclick="deleteReward('+r.id+')">x</button>'
+        +'</div></div>';
+    }).join('');
+  }
+
+  if(claimed.length){
+    html+='<p class="slbl" style="margin-top:16px;margin-bottom:8px">Claimed</p>';
+    html+=claimed.map(function(r){
+      return '<div class="rcard" style="opacity:.4">'
+        +'<div style="font-size:13px;font-weight:500;text-decoration:line-through">'+xe(r.name)+'</div>'
+        +'<div style="font-size:11px;color:var(--mut);margin-top:4px">'+xe(r.note)+' — Earned</div>'
+        +'</div>';
+    }).join('');
+  }
+
+  document.getElementById('rewards-list').innerHTML=html;
+}
+
+function claimReward(id){
+  var r=null;S.rewards.forEach(function(x){if(x.id===id)r=x;});
+  if(!r||r.claimed) return;
+  // Deduct XP cost if set
+  if(r.xpCost&&r.xpCost>0){
+    if(S.xp<r.xpCost){toast('Not enough XP to claim this reward.');return;}
+    S.xp-=r.xpCost;
+  }
+  r.claimed=true;
+  toast('Reward claimed: '+r.name+' — go enjoy it!');
+  save();renderRewards();renderHeader();
+}
+
+function deleteReward(id){
+  S.rewards=S.rewards.filter(function(r){return r.id!==id;});
+  save();renderRewards();
+}
+
+function openAddReward(){
+  var ex=document.getElementById('add-reward-form');if(ex)ex.remove();
+  var el=document.createElement('div');el.id='add-reward-form';el.className='iform';
+  el.innerHTML='<div class="iform-ttl" style="color:var(--t3)">New reward</div>'
+    +'<input type="text" id="arf-name" placeholder="Reward name (e.g. Cirque du Soleil)">'
+    +'<input type="text" id="arf-note" placeholder="Description">'
+    +'<p style="font-size:11px;color:var(--mut);margin-bottom:8px">Add one or more conditions — all must be met to unlock.</p>'
+    +'<div id="arf-conditions">'
+    +'<div class="arf-cond" style="display:flex;gap:8px;margin-bottom:8px;align-items:center">'
+    +'<select class="arf-metric" style="flex:1;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:6px 8px;font-size:12px;color:var(--txt)">'
+    +'<option value="approaches">Approaches</option><option value="sales">Sales</option><option value="streak">Sober days</option><option value="xp">Total XP</option>'
+    +'</select>'
+    +'<input type="number" class="arf-target" placeholder="Target" value="50" min="1" style="width:80px;margin-bottom:0;font-size:12px;padding:6px 8px">'
+    +'</div>'
+    +'</div>'
+    +'<button onclick="addARFCondition()" style="background:none;border:1px dashed var(--bdr);border-radius:7px;width:100%;padding:5px;font-size:11px;color:var(--mut);cursor:pointer;margin-bottom:8px">+ add another condition</button>'
+    +'<p style="font-size:11px;color:var(--mut);margin:8px 0 4px">XP cost to claim (optional — 0 for free)</p>'
+    +'<input type="number" id="arf-xpcost" placeholder="0" value="0" min="0">'
+    +'<div class="iform-actions">'
+    +'<button class="iform-submit" style="background:var(--t3);color:#0d0d0f" onclick="submitAddReward()">Add reward</button>'
+    +'<button class="iform-cancel" onclick="document.getElementById(\'add-reward-form\').remove()">Cancel</button>'
+    +'</div>';
+  document.getElementById('rewards-list').after(el);
+  document.getElementById('arf-name').focus();
+}
+
+function addARFCondition(){
+  var container=document.getElementById('arf-conditions');
+  var div=document.createElement('div');
+  div.className='arf-cond';
+  div.style.cssText='display:flex;gap:8px;margin-bottom:8px;align-items:center';
+  div.innerHTML='<select class="arf-metric" style="flex:1;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:6px 8px;font-size:12px;color:var(--txt)">'
+    +'<option value="approaches">Approaches</option><option value="sales">Sales</option><option value="streak">Sober days</option><option value="xp">Total XP</option>'
+    +'</select>'
+    +'<input type="number" class="arf-target" placeholder="Target" value="50" min="1" style="width:80px;margin-bottom:0;font-size:12px;padding:6px 8px">'
+    +'<button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--dim);font-size:16px;padding:0">×</button>';
+  container.appendChild(div);
+}
+
+function submitAddReward(){
+  var name=document.getElementById('arf-name').value.trim();if(!name){document.getElementById('arf-name').focus();return;}
+  var note=document.getElementById('arf-note').value.trim();
+  var conditions=[];
+  document.querySelectorAll('.arf-cond').forEach(function(row){
+    var metric=row.querySelector('.arf-metric').value;
+    var target=parseInt(row.querySelector('.arf-target').value)||50;
+    conditions.push({metric:metric,target:target});
+  });
+  if(!conditions.length)return;
+  var xpCost=parseInt(document.getElementById('arf-xpcost').value)||0;
+  S.rewards.push({id:Date.now(),name:name,note:note,conditions:conditions,xpCost:xpCost,claimed:false});
+  document.getElementById('add-reward-form').remove();save();renderRewards();
+}
+
+
+// ── COUNTERS ─────────────────────────────────────────────────────────────────
+
+var BUILT_IN_COUNTERS=[
+  {id:'approaches',label:'Approaches',color:'var(--t2)',skey:'approachCount'},
+  {id:'sales',label:'Sales',color:'var(--t1)',skey:'sales'},
+  {id:'sober',label:'Sober days',color:'var(--grn)',skey:'soberDays'}
+];
+
+function renderCounters(){
+  var grid=document.getElementById('counters-grid');
+  if(!grid)return;
+  var html='';
+
+  // Built-in counters
+  BUILT_IN_COUNTERS.forEach(function(c){
+    var val=S[c.skey]||0;
+    html+='<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:12px;padding:12px">'
+      +'<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-bottom:6px">'+c.label+'</div>'
+      +'<div style="font-size:22px;font-weight:700;font-family:monospace;color:'+c.color+';margin-bottom:8px" id="cnt-'+c.id+'">'+val+'</div>'
+      +'<div style="display:flex;gap:6px">'
+      +'<button onclick="adjustCounter(this.dataset.id,-1)" data-id="'+c.id+'" style="flex:1;background:none;border:1px solid var(--bdr);border-radius:7px;padding:5px;cursor:pointer;font-size:16px;color:var(--mut)">-</button>'
+      +'<button onclick="adjustCounter(this.dataset.id,1)" data-id="'+c.id+'" style="flex:2;background:'+c.color+';border:none;border-radius:7px;padding:5px 8px;cursor:pointer;font-size:12px;font-weight:700;color:#0d0d0f">+ Add</button>'
+      +'</div></div>';
+  });
+
+  // Custom counters
+  (S.customCounters||[]).forEach(function(c){
+    var val=(S.customCounts&&S.customCounts[c.id])||0;
+    html+='<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:12px;padding:12px">'
+      +'<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-bottom:6px">'+xe(c.label)+'</div>'
+      +'<div style="font-size:22px;font-weight:700;font-family:monospace;color:var(--t3);margin-bottom:8px" id="cnt-custom-'+c.id+'">'+val+'</div>'
+      +'<div style="display:flex;gap:6px">'
+      +'<button onclick="adjustCustomCounter('+c.id+',-1)" style="flex:1;background:none;border:1px solid var(--bdr);border-radius:7px;padding:5px;cursor:pointer;font-size:16px;color:var(--mut)">-</button>'
+      +'<button onclick="adjustCustomCounter('+c.id+',1)" style="flex:2;background:var(--t3);border:none;border-radius:7px;padding:5px 8px;cursor:pointer;font-size:12px;font-weight:700;color:#0d0d0f">+ Add</button>'
+      +'<button onclick="deleteCounter('+c.id+')" style="background:none;border:1px solid var(--bdr);border-radius:7px;padding:5px 8px;cursor:pointer;font-size:11px;color:var(--dim)">x</button>'
+      +'</div></div>';
+  });
+
+  grid.innerHTML=html;
+}
+
+
+function adjustCounter(id,delta){
+  var map={approaches:'approachCount',sales:'sales',sober:'soberDays'};
+  var key=map[id];
+  if(!key)return;
+  S[key]=Math.max(0,(S[key]||0)+delta);
+  var el=document.getElementById('cnt-'+id);
+  if(el)el.textContent=S[key];
+  if(delta>0)toast('+1 '+id+' — total: '+S[key]);
+  save();renderRewards();
+}
+
+function adjustCustomCounter(cid,delta){
+  if(!S.customCounts)S.customCounts={};
+  S.customCounts[cid]=Math.max(0,(S.customCounts[cid]||0)+delta);
+  var el=document.getElementById('cnt-custom-'+cid);
+  if(el)el.textContent=S.customCounts[cid];
+  if(delta>0)toast('+1 logged — total: '+S.customCounts[cid]);
+  save();renderRewards();
+}
+
+
+function openAddCounter(){
+  var ex=document.getElementById('add-counter-form');if(ex)ex.remove();
+  var el=document.createElement('div');el.id='add-counter-form';el.className='iform';
+  el.innerHTML='<div class="iform-ttl" style="color:var(--t3)">New counter</div>'
+    +'<input type="text" id="acf-label" placeholder="Counter name (e.g. Videos posted, Dates)">'
+    +'<div class="iform-actions">'
+    +'<button class="iform-submit" style="background:var(--t3);color:#0d0d0f" onclick="submitAddCounter()">Add</button>'
+    +'<button class="iform-cancel" onclick="document.getElementById(\\"add-counter-form\\").remove()">Cancel</button>'
+    +'</div>';
+  document.getElementById('counters-grid').after(el);
+  document.getElementById('acf-label').focus();
+}
+
+function submitAddCounter(){
+  var label=document.getElementById('acf-label').value.trim();if(!label)return;
+  if(!S.customCounters)S.customCounters=[];
+  var cid=Date.now();
+  S.customCounters.push({id:cid,label:label});
+  document.getElementById('add-counter-form').remove();
+  save();renderCounters();
+  // Also add as metric option in add reward form if open
+}
+
+function deleteCounter(cid){
+  S.customCounters=(S.customCounters||[]).filter(function(c){return c.id!==cid;});
+  if(S.customCounts)delete S.customCounts[cid];
+  save();renderCounters();
+}
+
+
+
+function claimReward(id){
+  var r=null;S.rewards.forEach(function(x){if(x.id===id)r=x;});
+  if(!r||r.claimed) return;
+  // Deduct XP cost if set
+  if(r.xpCost&&r.xpCost>0){
+    if(S.xp<r.xpCost){toast('Not enough XP to claim this reward.');return;}
+    S.xp-=r.xpCost;
+  }
+  r.claimed=true;
+  toast('Reward claimed: '+r.name+' — go enjoy it!');
+  save();renderRewards();renderHeader();
+}
+
+function deleteReward(id){
+  S.rewards=S.rewards.filter(function(r){return r.id!==id;});
+  save();renderRewards();
+}
+
+
+
+function openAddHabit(){
+  var ex=document.getElementById("add-habit-form");if(ex)ex.remove();
+  var el=document.createElement("div");el.id="add-habit-form";el.className="iform";
+  el.innerHTML="<div class=\"iform-ttl\" style=\"color:var(--t1)\">New habit</div>"
+    +"<input type=\"text\" id=\"ahf-name\" placeholder=\"Habit name\">"
+    +"<div class=\"iform-row\">"
+    +"<label>XP <input type=\"number\" id=\"ahf-xp\" value=\"20\" min=\"1\" style=\"width:70px;margin-bottom:0;display:inline-block\"></label>"
+    +"<label><input type=\"checkbox\" id=\"ahf-fail\"> Can fail</label>"
+    +"</div>"
+    +"<div class=\"iform-actions\">"
+    +"<button class=\"iform-submit\" style=\"background:var(--t1);color:#0d0d0f\" onclick=\"submitAddHabit()\">Add</button>"
+    +"<button class=\"iform-cancel\" onclick=\"document.getElementById('add-habit-form').remove()\">Cancel</button>"
+    +"</div>";
+  document.getElementById("habits-section").appendChild(el);
+  document.getElementById("ahf-name").focus();
+}
+
+function submitAddHabit(){
+  var name=document.getElementById("ahf-name").value.trim();if(!name){document.getElementById("ahf-name").focus();return;}
+  var xp=parseInt(document.getElementById("ahf-xp").value)||20;
+  var fe=document.getElementById("ahf-fail");
+  S.habits.push({id:Date.now(),tier:1,name:name,xp:xp,streak:0,canFail:fe?fe.checked:false});
+  document.getElementById("add-habit-form").remove();save();renderToday();
+}
+
+
+function parseWork(raw){
+  var s=String(raw).trim().toLowerCase();if(!s)return null;
+  if(/^\d+(\.\d+)?\s*(m|min|mins|minutes?)$/.test(s))return parseFloat(s)/60;
+  var hm=s.match(/^(\d+)\s*h\s*(\d+)\s*m?$/);if(hm)return parseInt(hm[1])+parseInt(hm[2])/60;
+  if(/^\d+(\.\d+)?\s*h$/.test(s))return parseFloat(s);
+  var n=parseFloat(s);if(!isNaN(n)&&n>0)return n>16?n/60:n;
+  return null;
+}
+function fmtH(h){var m=Math.round(h*60),hr=Math.floor(m/60),mn=m%60;if(hr===0)return mn+'m';if(mn===0)return hr+'h';return hr+'h '+mn+'m';}
+
+function getWorkLog(){
+  var t=dk();
+  if(!S.dailyLog[t])S.dailyLog[t]={completed:[],failed:[],xpEarned:0,moodEntries:[],workSessions:[]};
+  if(!S.dailyLog[t].workSessions)S.dailyLog[t].workSessions=[];
+  return S.dailyLog[t];
+}
+
+function renderWork(){
+  var log=getWorkLog(),sess=log.workSessions;
+  var total=sess.reduce(function(a,s){return a+s.hrs;},0);
+  var pct=Math.min(100,Math.round((total/8)*100));
+  document.getElementById('work-display').textContent=fmtH(total);
+  document.getElementById('work-bar').style.width=pct+'%';
+  var ms=[{h:2,t:'2h - engine done'},{h:4,t:'4h - halfway'},{h:6,t:'6h - strong'},{h:8,t:'8h - ceiling!'}];
+  document.getElementById('work-milestones').innerHTML=ms.filter(function(m){return total>=m.h;}).map(function(m){return '<span class="wm">'+m.t+'</span>';}).join('');
+  var ll=tlog(),eng=null,ceil=null;
+  S.habits.forEach(function(h){if(h.id===201)eng=h;if(h.id===301)ceil=h;});
+  if(eng&&total>=2&&ll.completed.indexOf(201)===-1){ll.completed.push(201);ll.xpEarned+=eng.xp;S.xp+=eng.xp;toast('Auto: 2h block +'+eng.xp+' XP');}
+  if(ceil&&total>=8&&ll.completed.indexOf(301)===-1){ll.completed.push(301);ll.xpEarned+=ceil.xp;S.xp+=ceil.xp;toast('8h ceiling! +'+ceil.xp+' XP');}
+  document.getElementById('work-sessions').innerHTML=sess.length===0?'<p class="empty">No sessions yet.</p>':sess.slice().reverse().map(function(s,ri){
+    var i=sess.length-1-ri;
+    return '<div class="wsess"><span>'+xe(s.label||'Work session')+'</span><span class="wsess-h">'+fmtH(s.hrs)+'</span><span class="wsess-t">'+s.time+'</span><button class="wsess-del" onclick="delWork('+i+')">x</button></div>';
+  }).join('');
+  var days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],dates=wkDates(wkStart(0));
+  var hpd=dates.map(function(d){var l=S.dailyLog[d]||{};return parseFloat(((l.workSessions||[]).reduce(function(a,s){return a+s.hrs;},0)).toFixed(2));});
+  if(charts.workWk){charts.workWk.destroy();charts.workWk=null;}
+  charts.workWk=new Chart(document.getElementById('workWkChart'),{type:'bar',data:{labels:days,datasets:[
+    {data:hpd,backgroundColor:hpd.map(function(h){return h>=8?'#6af5a8':h>=2?'#6ab4f5':'#2a2a2e';}),borderRadius:5,borderSkipped:false},
+    {data:Array(7).fill(8),type:'line',borderColor:'rgba(200,245,106,0.25)',borderDash:[4,4],borderWidth:1,pointRadius:0,fill:false}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#555',font:{size:10},autoSkip:false}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#555',font:{size:10},callback:function(v){return v+'h';}},beginAtZero:true,max:10}}}});
+  var rows=[];
+  for(var i=7;i>=0;i--){
+    var ws=wkStart(-i),wd=wkDates(ws);
+    var th=wd.reduce(function(a,d){var l=S.dailyLog[d]||{};return a+(l.workSessions||[]).reduce(function(b,s){return b+s.hrs;},0);},0);
+    var avg=parseFloat((th/7).toFixed(1));var d0=new Date(ws+'T12:00:00');
+    rows.push({label:MNS[d0.getMonth()]+' '+d0.getDate(),avg:avg,isC:i===0});
+  }
+  var maxA=Math.max.apply(null,rows.map(function(r){return r.avg;}).concat([1]));
+  document.getElementById('work-hist').innerHTML=rows.slice().reverse().map(function(r){
+    return '<div class="wbar-row"><span class="wbl">'+(r.isC?'This wk':r.label)+'</span><div class="wbw"><div class="wbf" style="width:'+Math.round((r.avg/maxA)*100)+'%;background:'+(r.isC?'#6ab4f5':'#2a2a2e')+'"></div></div><span class="wbv">'+r.avg+'h</span></div>';
+  }).join('');
+}
+
+function logWork(){
+  var inp=document.getElementById('work-inp'),lbl=document.getElementById('work-lbl');
+  var hrs=parseWork(inp.value);if(!hrs||hrs<=0){toast('Try: 52m, 1.5h, 1h30m');return;}
+  var log=getWorkLog(),now=new Date();
+  log.workSessions.push({hrs:hrs,label:lbl.value.trim(),time:now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});
+  inp.value='';lbl.value='';save();renderWork();
+}
+function quickLog(hrs){var log=getWorkLog(),now=new Date();log.workSessions.push({hrs:hrs,label:'',time:now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});save();renderWork();toast('+'+fmtH(hrs)+' logged');}
+function delWork(i){var log=getWorkLog();log.workSessions.splice(i,1);save();renderWork();}
+
+function renderWeek(){
+  var days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],dates=wkDates(wkStart(0)),today=dk();
+  var t1=S.habits.filter(function(h){return h.tier===1;});
+  var xpd=dates.map(function(d){return(S.dailyLog[d]||{xpEarned:0}).xpEarned;});
+  document.getElementById('wk-grid').innerHTML=dates.map(function(date,i){
+    var l=S.dailyLog[date]||{completed:[]};
+    var t1d=t1.filter(function(h){return l.completed.indexOf(h.id)!==-1;}).length;
+    var any=l.completed.length>0,isT=date===today;
+    var cls='dc';if(isT)cls+=' tod';else if(t1d>=t1.length&&t1.length>0)cls+=' dall';else if(any)cls+=' dsom';
+    return '<div class="'+cls+'"><span>'+days[i]+'</span><span>'+l.completed.length+'</span></div>';
+  }).join('');
+  var totXP=xpd.reduce(function(a,b){return a+b;},0);
+  var hits=dates.reduce(function(a,d){return a+(S.dailyLog[d]||{completed:[]}).completed.length;},0);
+  var bi=xpd.indexOf(Math.max.apply(null,xpd));
+  document.getElementById('wk-xp').textContent=totXP;document.getElementById('wk-hits').textContent=hits;
+  document.getElementById('wk-best').textContent=(bi>=0&&Math.max.apply(null,xpd)>0)?days[bi]:'--';
+  if(charts.wk){charts.wk.destroy();charts.wk=null;}
+  charts.wk=new Chart(document.getElementById('wkChart'),{type:'bar',data:{labels:days,datasets:[{data:xpd,backgroundColor:'#6ab4f5',borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#555',font:{size:10},autoSkip:false}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#555',font:{size:10}},beginAtZero:true}}}});
+}
+
+function weekSummaries(){
+  var weeks=[];
+  for(var i=7;i>=0;i--){
+    var ws=wkStart(-i),dates=wkDates(ws);
+    var xp=dates.reduce(function(a,d){return a+(S.dailyLog[d]||{xpEarned:0}).xpEarned;},0);
+    var hits=dates.reduce(function(a,d){return a+(S.dailyLog[d]||{completed:[]}).completed.length;},0);
+    var pct=Math.min(100,Math.round((hits/((S.habits.length||1)*7))*100));
+    var d0=new Date(ws+'T12:00:00');weeks.push({label:MNS[d0.getMonth()]+' '+d0.getDate(),xp:xp,pct:pct});
+  }
+  return weeks;
+}
+
+function renderHistory(){
+  var weeks=weekSummaries(),cur=weeks[weeks.length-1],prv=weeks[weeks.length-2];
+  var xpD=cur.xp-prv.xp,pctD=cur.pct-prv.pct;
+  document.getElementById('cmp-cards').innerHTML=
+    '<div class="cmpc"><div class="met-l">XP this week</div><div class="cmpv" style="color:var(--t1)">'+cur.xp+'</div><div class="cmpd '+(xpD>0?'dp':xpD<0?'dn':'dz')+'">'+(xpD>0?'+':'')+xpD+'</div></div>'
+    +'<div class="cmpc"><div class="met-l">Completion</div><div class="cmpv" style="color:var(--t2)">'+cur.pct+'%</div><div class="cmpd '+(pctD>0?'dp':pctD<0?'dn':'dz')+'">'+(pctD>0?'+':'')+pctD+'%</div></div>'
+    +'<div class="cmpc"><div class="met-l">Last week</div><div class="cmpv">'+prv.xp+'</div><div class="cmpd dz">baseline</div></div>';
+  var labels=weeks.map(function(w){return w.label;});
+  if(charts.hxp){charts.hxp.destroy();charts.hxp=null;}if(charts.hpct){charts.hpct.destroy();charts.hpct=null;}
+  charts.hxp=new Chart(document.getElementById('hxpChart'),{type:'line',data:{labels:labels,datasets:[{data:weeks.map(function(w){return w.xp;}),borderColor:'#c8f56a',backgroundColor:'rgba(200,245,106,0.06)',tension:0.35,fill:true,pointRadius:3,pointBackgroundColor:'#c8f56a'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#555',font:{size:9},maxRotation:30}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#555',font:{size:9}},beginAtZero:true}}}});
+  charts.hpct=new Chart(document.getElementById('hpctChart'),{type:'line',data:{labels:labels,datasets:[{data:weeks.map(function(w){return w.pct;}),borderColor:'#6ab4f5',backgroundColor:'rgba(106,180,245,0.06)',tension:0.35,fill:true,pointRadius:3,pointBackgroundColor:'#6ab4f5',borderDash:[4,4]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#555',font:{size:9},maxRotation:30}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#555',font:{size:9},callback:function(v){return v+'%';}},min:0,max:100}}}});
+  var maxXP=Math.max.apply(null,weeks.map(function(w){return w.xp;}).concat([1]));
+  document.getElementById('hist-bars').innerHTML=weeks.slice().reverse().map(function(w,i){
+    var p2w=weeks[weeks.length-2-i],d=p2w?w.xp-p2w.xp:0,isC=i===0;
+    return '<div class="wbar-row"><span class="wbl">'+(isC?'This wk':w.label)+'</span><div class="wbw"><div class="wbf" style="width:'+Math.round((w.xp/maxXP)*100)+'%;background:'+(isC?'#c8f56a':'#2a2a2e')+'"></div></div><span class="wbv">'+w.xp+'</span>'+(p2w?'<span class="'+(d>0?'dp':d<0?'dn':'dz')+'">'+(d>0?'+':'')+d+'</span>':'')+'</div>';
+  }).join('');
+}
+
+function cbtPrompt(){
+  var w=weekSummaries(),cur=w[w.length-1],prv=w[w.length-2];
+  if(typeof sendPrompt==='function')sendPrompt('Can you give me a CBT-based reflection on my habit tracker progress? This week: '+cur.xp+' XP, '+cur.pct+'% completion. Last week: '+prv.xp+' XP, '+prv.pct+'% completion.');
+}
+
 function renderRewards(){
   document.getElementById('rewards-list').innerHTML=S.rewards.map(function(r){
     var pct=Math.min(100,Math.round((S.xp/r.cost)*100)),can=S.xp>=r.cost&&!r.unlocked;
@@ -742,21 +1182,7 @@ function unlockReward(id){
   r.unlocked=true;S.xp-=r.cost;toast('Unlocked: '+r.name);save();renderRewards();renderHeader();
 }
 
-function openAddReward(){
-  var ex=document.getElementById('add-reward-form');if(ex)ex.remove();
-  var el=document.createElement('div');el.id='add-reward-form';el.className='iform';
-  el.innerHTML='<div class="iform-ttl" style="color:var(--t3)">New reward</div>'
-    +'<input type="text" id="arf-name" placeholder="Reward name">'
-    +'<div class="iform-row"><label>XP cost <input type="number" id="arf-cost" value="500" min="1" style="width:90px;margin-bottom:0;display:inline-block"></label></div>'
-    +'<div class="iform-actions"><button class="iform-submit" style="background:var(--t3);color:#0d0d0f" onclick="submitAddReward()">Add</button><button class="iform-cancel" onclick="document.getElementById(\'add-reward-form\').remove()">Cancel</button></div>';
-  document.getElementById('rewards-list').before(el);document.getElementById('arf-name').focus();
-}
-function submitAddReward(){
-  var name=document.getElementById('arf-name').value.trim();if(!name){document.getElementById('arf-name').focus();return;}
-  var cost=parseInt(document.getElementById('arf-cost').value)||500;
-  S.rewards.push({id:Date.now(),name:name,cost:cost,unlocked:false});
-  document.getElementById('add-reward-form').remove();save();renderRewards();
-}
+
 
 function getRatingDate(){
   var el=document.getElementById('rating-date');
