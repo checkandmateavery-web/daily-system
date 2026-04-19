@@ -480,6 +480,16 @@ function load(){
     S.habits.forEach(function(h){h.streak=(prev&&prev.completed.indexOf(h.id)!==-1)?(h.streak||0)+1:0;});
   }
   if(!S.dailyLog[t])S.dailyLog[t]={completed:[],failed:[],xpEarned:0,moodEntries:[],workSessions:[]};
+  // Migrate old XP-cost rewards to new conditions format
+  if(S.rewards){
+    S.rewards=S.rewards.map(function(r){
+      if(r.conditions&&r.conditions.length) return r; // already new format
+      if(r.metric) return {id:r.id,name:r.name,note:r.note||'',conditions:[{metric:r.metric,target:r.target||0}],xpCost:0,claimed:r.claimed||false};
+      if(r.cost) return {id:r.id,name:r.name,note:r.note||'',conditions:[{metric:'xp',target:r.cost}],xpCost:0,claimed:r.unlocked||r.claimed||false};
+      return null; // completely broken, drop it
+    }).filter(Boolean);
+    save();
+  }
   S.lastDate=t;show('today');
 }
 
