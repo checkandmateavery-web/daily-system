@@ -279,6 +279,9 @@ input[type=range]{accent-color:var(--t1);width:100%}
   <button onclick="openAddCounter()" style="width:100%;padding:7px;border:1px dashed var(--bdr);border-radius:8px;background:none;cursor:pointer;font-size:12px;color:var(--dim);font-family:inherit;margin-bottom:16px">+ add custom counter</button>
   <div id="rewards-list"></div>
   <button class="add-btn" onclick="openAddReward()">+ add reward</button>
+  <div id="clear-old-btn" style="display:none;margin-top:8px">
+    <button onclick="clearOldRewards()" style="width:100%;padding:8px;border:1px solid var(--red);border-radius:8px;background:none;cursor:pointer;font-size:12px;color:var(--red);font-family:inherit">Clear all old/broken rewards</button>
+  </div>
 </div>
 <div class="page" id="p-mood">
   <p class="slbl" style="margin-top:0">Rate your day</p>
@@ -848,6 +851,12 @@ function renderRewards(){
   }
 
   document.getElementById('rewards-list').innerHTML=html;
+  // Show clear button if any broken rewards exist
+  var hasBroken=S.rewards.some(function(r){
+    return !r.claimed&&!r.conditions&&(!r.metric||r.metric===undefined);
+  });
+  var clearBtn=document.getElementById('clear-old-btn');
+  if(clearBtn)clearBtn.style.display=hasBroken?'block':'none';
 }
 
 
@@ -867,6 +876,15 @@ function claimReward(id){
 function deleteReward(id){
   S.rewards=S.rewards.filter(function(r){return r.id!==id;});
   save();renderRewards();
+}
+
+function clearOldRewards(){
+  var before=S.rewards.length;
+  S.rewards=S.rewards.filter(function(r){
+    return r.conditions||(r.metric&&r.metric!==undefined);
+  });
+  save();renderRewards();
+  toast('Cleared '+(before-S.rewards.length)+' old rewards');
 }
 
 function openAddReward(){
@@ -1034,6 +1052,15 @@ function claimReward(id){
 function deleteReward(id){
   S.rewards=S.rewards.filter(function(r){return r.id!==id;});
   save();renderRewards();
+}
+
+function clearOldRewards(){
+  var before=S.rewards.length;
+  S.rewards=S.rewards.filter(function(r){
+    return r.conditions||(r.metric&&r.metric!==undefined);
+  });
+  save();renderRewards();
+  toast('Cleared '+(before-S.rewards.length)+' old rewards');
 }
 
 
