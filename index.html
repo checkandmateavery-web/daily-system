@@ -490,7 +490,7 @@ function show(name){
   if(name==='work')renderWork();
   if(name==='week')renderWeek();
   if(name==='history')renderHistory();
-  if(name==='rewards')renderRewards();
+  if(name==='rewards'){renderCounters();renderRewards();}
   if(name==='skills')renderSkills();
   if(name==='mood')renderMood();
   if(name==='data')renderDataPage();
@@ -748,23 +748,26 @@ function metricLabel(metric){
   return {xp:'XP',streak:'sober days',approaches:'approaches',sales:'sales'}[metric]||metric;
 }
 
+function safeConditions(r){
+  if(r.conditions&&r.conditions.length) return r.conditions;
+  if(r.metric) return [{metric:r.metric,target:r.target||0}];
+  if(r.cost) return [{metric:'xp',target:r.cost}];
+  return [];
+}
+
 function rewardUnlocked(r){
-  // Handle old XP-cost format
-  if(r.cost!==undefined&&!r.conditions&&!r.metric) return S.xp>=r.cost;
-  // Support both old single-metric and new multi-condition format
-  var conditions=r.conditions||(r.metric?[{metric:r.metric,target:r.target}]:[]);
-  if(!conditions.length) return false;
-  return conditions.every(function(c){return c.metric&&getMetricValue(c.metric)>=(c.target||0);});
+  var conds=safeConditions(r);
+  if(!conds.length) return false;
+  return conds.every(function(c){return c.metric&&(getMetricValue(c.metric)||0)>=(c.target||0);});
 }
 
 function rewardProgress(r){
-  if(r.cost!==undefined&&!r.conditions&&!r.metric) return Math.min(100,Math.round((S.xp/r.cost)*100));
-  var conditions=r.conditions||(r.metric?[{metric:r.metric,target:r.target}]:[]);
-  if(!conditions.length) return 0;
+  var conds=safeConditions(r);
+  if(!conds.length) return 0;
   var min=100;
-  conditions.forEach(function(c){
+  conds.forEach(function(c){
     if(!c.metric||!c.target) return;
-    var pct=Math.min(100,Math.round((getMetricValue(c.metric)/c.target)*100));
+    var pct=Math.min(100,Math.round(((getMetricValue(c.metric)||0)/c.target)*100));
     if(pct<min)min=pct;
   });
   return min;
@@ -780,18 +783,17 @@ function renderRewards(){
   var unlocked=S.rewards.filter(function(r){return !r.claimed&&rewardUnlocked(r);});
   var locked=S.rewards.filter(function(r){return !r.claimed&&!rewardUnlocked(r);});
   var claimed=S.rewards.filter(function(r){return r.claimed;});
-
   var html='';
 
   if(unlocked.length){
     html+='<p class="slbl" style="color:var(--t1);margin-bottom:8px">Ready to claim</p>';
     html+=unlocked.map(function(r){
-      var conditions=r.conditions||[{metric:r.metric,target:r.target}];
+      var conds=safeConditions(r);
       return '<div class="rcard" style="border-color:rgba(200,245,106,.3);background:rgba(200,245,106,.04)">'
-        +'<div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px">'+xe(r.name)+'</div>'
-        +'<div style="font-size:12px;color:var(--mut);margin-bottom:8px">'+xe(r.note)+'</div>'
-        +conditions.map(function(c){
-          return '<div style="font-size:11px;color:var(--t1);font-family:monospace;margin-bottom:4px">'+conditionLabel(c)+' ✓</div>';
+        +'<div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px">'+xe(r.name||'Reward')+'</div>'
+        +'<div style="font-size:12px;color:var(--mut);margin-bottom:8px">'+xe(r.note||'')+'</div>'
+        +conds.map(function(c){
+          return '<div style="font-size:11px;color:var(--t1);font-family:monospace;margin-bottom:4px">'+(getMetricValue(c.metric)||0)+' / '+(c.target||0)+' '+metricLabel(c.metric)+' ✓</div>';
         }).join('')
         +'<div class="rprog" style="margin-top:6px"><div class="rpf" style="width:100%;background:var(--t1)"></div></div>'
         +'<div class="rfoot" style="margin-top:8px">'
@@ -804,19 +806,28 @@ function renderRewards(){
   if(locked.length){
     html+='<p class="slbl" style="margin-top:'+(unlocked.length?16:0)+'px;margin-bottom:8px">In progress</p>';
     html+=locked.map(function(r){
-      var conditions=r.conditions||[{metric:r.metric,target:r.target}];
+      var conds=safeConditions(r);
+      if(!conds.length){
+        return '<div class="rcard">'
+          +'<div style="font-size:14px;font-weight:600;margin-bottom:4px">'+xe(r.name||'Reward')+'</div>'
+          +'<div style="font-size:12px;color:var(--red);margin-bottom:8px">Old format — tap x to delete and recreate</div>'
+          +'<div class="rfoot"><span></span><button class="del-btn" onclick="deleteReward('+r.id+')">x</button></div>'
+          +'</div>';
+      }
       var pct=rewardProgress(r);
       return '<div class="rcard">'
-        +'<div style="font-size:14px;font-weight:600;margin-bottom:4px">'+xe(r.name)+'</div>'
-        +'<div style="font-size:12px;color:var(--mut);margin-bottom:8px">'+xe(r.note)+'</div>'
-        +conditions.map(function(c){
-          var cp=Math.min(100,Math.round((getMetricValue(c.metric)/c.target)*100));
+        +'<div style="font-size:14px;font-weight:600;margin-bottom:4px">'+xe(r.name||'Reward')+'</div>'
+        +'<div style="font-size:12px;color:var(--mut);margin-bottom:8px">'+xe(r.note||'')+'</div>'
+        +conds.map(function(c){
+          var cur=getMetricValue(c.metric)||0;
+          var tgt=c.target||1;
+          var cp=Math.min(100,Math.round((cur/tgt)*100));
           var done=cp>=100;
-          return '<div style="font-size:11px;font-family:monospace;margin-bottom:4px;color:'+(done?'var(--t1)':'var(--mut)')+'">'+conditionLabel(c)+(done?' ✓':'')+'</div>';
+          return '<div style="font-size:11px;font-family:monospace;margin-bottom:4px;color:'+(done?'var(--t1)':'var(--mut)')+'">'+cur+' / '+tgt+' '+metricLabel(c.metric)+(done?' ✓':'')+'</div>';
         }).join('')
         +'<div class="rprog" style="margin-top:6px"><div class="rpf" style="width:'+pct+'%"></div></div>'
         +'<div class="rfoot" style="margin-top:6px">'
-        +'<span style="font-size:12px;font-family:monospace;color:var(--mut)">'+pct+'% overall</span>'
+        +'<span style="font-size:12px;font-family:monospace;color:var(--mut)">'+pct+'%</span>'
         +'<button class="del-btn" onclick="deleteReward('+r.id+')">x</button>'
         +'</div></div>';
     }).join('');
@@ -826,14 +837,19 @@ function renderRewards(){
     html+='<p class="slbl" style="margin-top:16px;margin-bottom:8px">Claimed</p>';
     html+=claimed.map(function(r){
       return '<div class="rcard" style="opacity:.4">'
-        +'<div style="font-size:13px;font-weight:500;text-decoration:line-through">'+xe(r.name)+'</div>'
-        +'<div style="font-size:11px;color:var(--mut);margin-top:4px">'+xe(r.note)+' — Earned</div>'
+        +'<div style="font-size:13px;font-weight:500;text-decoration:line-through">'+xe(r.name||'Reward')+'</div>'
+        +'<div style="font-size:11px;color:var(--mut);margin-top:4px">'+xe(r.note||'')+'</div>'
         +'</div>';
     }).join('');
   }
 
+  if(!unlocked.length&&!locked.length&&!claimed.length){
+    html='<p style="font-size:13px;color:var(--mut);padding:12px 0">No rewards yet — add one below.</p>';
+  }
+
   document.getElementById('rewards-list').innerHTML=html;
 }
+
 
 function claimReward(id){
   var r=null;S.rewards.forEach(function(x){if(x.id===id)r=x;});
