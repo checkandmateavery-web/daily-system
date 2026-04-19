@@ -168,6 +168,16 @@ textarea:focus{border-color:var(--t1)}
 .ach-name{font-size:12px;font-weight:700;margin-bottom:2px}
 .ach-desc{font-size:11px;color:var(--mut);line-height:1.4}
 .ach-earned-lbl{font-size:10px;color:var(--t1);font-family:'DM Mono',monospace;margin-top:3px}
+.skill-edit-btn{font-size:10px;padding:3px 10px;border-radius:6px;border:1px solid var(--bdr);background:none;cursor:pointer;color:var(--mut);font-family:'DM Mono',monospace;margin-left:auto}
+.skill-edit-btn:hover{border-color:var(--t1);color:var(--t1)}
+.skill-habit-panel{background:var(--surf2);border-radius:10px;padding:12px;margin-top:10px;display:none}
+.skill-habit-panel.on{display:block}
+.shp-lbl{font-size:11px;color:var(--mut);margin-bottom:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.shp-habit{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bdr);font-size:13px}
+.shp-habit:last-child{border-bottom:none}
+.shp-check{width:16px;height:16px;accent-color:var(--t1);flex-shrink:0;cursor:pointer}
+.shp-name{flex:1;color:var(--txt)}
+.shp-tier{font-size:10px;font-family:'DM Mono',monospace;color:var(--mut)}
 input[type=range]{accent-color:var(--t1);width:100%}
 </style>
 </head>
@@ -204,17 +214,9 @@ input[type=range]{accent-color:var(--t1);width:100%}
     <div class="met"><div class="met-l">Streak</div><div class="met-v" id="m-streak">0</div></div>
     <div class="met"><div class="met-l">Total XP</div><div class="met-v" id="m-xp">0</div></div>
   </div>
-  <div id="tier1-section">
-    <div class="tier-hdr"><div class="tier-dot" style="background:var(--t1)"></div><span class="tier-ttl" style="color:var(--t1)">Floor</span><span class="tier-sub">Non-negotiables</span><span class="tier-prg" style="color:var(--t1)" id="t1p">0/0</span></div>
-    <div id="t1-list"></div><button class="add-btn" onclick="openAddHabit(1)">+ add floor habit</button>
-  </div>
-  <div id="tier2-section">
-    <div class="tier-hdr"><div class="tier-dot" style="background:var(--t2)"></div><span class="tier-ttl" style="color:var(--t2)">Engine</span><span class="tier-sub">Moves life forward</span><span class="tier-prg" style="color:var(--t2)" id="t2p">0/0</span></div>
-    <div id="t2-list"></div><button class="add-btn" onclick="openAddHabit(2)">+ add engine habit</button>
-  </div>
-  <div id="tier3-section">
-    <div class="tier-hdr"><div class="tier-dot" style="background:var(--t3)"></div><span class="tier-ttl" style="color:var(--t3)">Ceiling</span><span class="tier-sub">Full vision days</span><span class="tier-prg" style="color:var(--t3)" id="t3p">0/0</span></div>
-    <div id="t3-list"></div><button class="add-btn" onclick="openAddHabit(3)">+ add ceiling habit</button>
+  <div id="habits-section">
+    <div id="habits-list"></div>
+    <button class="add-btn" onclick="openAddHabit()">+ add habit</button>
   </div>
 </div>
 <div class="page" id="p-work">
@@ -416,20 +418,14 @@ function defState(){
   return{xp:0,level:1,streak:0,soberDays:122,lastDate:'',
     habits:[
       {id:101,tier:1,name:'Sobriety check-in',xp:30,streak:0,canFail:false},
-      {id:102,tier:1,name:'Walk at least 30 minutes',xp:25,streak:0,canFail:false},
-      {id:103,tier:1,name:'Eat under 1800 cal, no high-sugar or bad carbs',xp:20,streak:0,canFail:true},
-      {id:104,tier:1,name:'Daily journal + DMJ',xp:20,streak:0,canFail:false},
-      {id:105,tier:1,name:'No content in bed + no unearned content',xp:15,streak:0,canFail:true},
-      {id:201,tier:2,name:'Focused work block (min 2hrs)',xp:40,streak:0,min:true,canFail:false},
-      {id:202,tier:2,name:'At least 1 daygame approach',xp:35,streak:0,min:true,canFail:false},
-      {id:203,tier:2,name:'Online dating: 10 min swiping',xp:10,streak:0,canFail:false},
-      {id:204,tier:2,name:'Online dating: 10 messages sent',xp:10,streak:0,canFail:false},
-      {id:205,tier:2,name:'Post a video',xp:25,streak:0,canFail:false},
-      {id:301,tier:3,name:'Work at least 8 hours + timeblock',xp:50,streak:0,canFail:false},
-      {id:302,tier:3,name:'5 daygame approaches',xp:45,streak:0,canFail:false},
-      {id:303,tier:3,name:'Nightgame - 10 approaches',xp:40,streak:0,canFail:false},
-      {id:304,tier:3,name:'Post 3 shorts + Skool post',xp:30,streak:0,canFail:false},
-      {id:305,tier:3,name:'Gym 15+ minutes',xp:25,streak:0,canFail:false},
+      {id:102,tier:1,name:'Daily journal',xp:25,streak:0,canFail:false},
+      {id:103,tier:1,name:'CBT exercise',xp:20,streak:0,canFail:false},
+      {id:104,tier:1,name:'Listen to hypnosis',xp:20,streak:0,canFail:false},
+      {id:105,tier:1,name:'Go out and approach',xp:35,streak:0,canFail:false},
+      {id:106,tier:1,name:'Record or post something',xp:25,streak:0,canFail:false},
+      {id:107,tier:1,name:'Meditate',xp:20,streak:0,canFail:false},
+      {id:108,tier:1,name:'No laptop in bed',xp:20,streak:0,canFail:true},
+      {id:109,tier:1,name:'Focused work block (min 2hrs)',xp:40,streak:0,canFail:false},
       {id:306,tier:3,name:'10 min visualization',xp:15,streak:0,canFail:false},
       {id:307,tier:3,name:'Scott Adams habit method',xp:15,streak:0,canFail:false},
       {id:308,tier:3,name:'Repeat affirmation',xp:10,streak:0,canFail:false},
@@ -541,25 +537,16 @@ function moveHabit(id,dir){
 }
 
 function renderToday(){
-  // init date picker to today if not set
   var dp=document.getElementById('active-date');
   if(dp&&!dp.value){activeDate=dk();dp.value=activeDate;}
   updateActiveDateBanner();
   renderHeader();
   var log=tlog();
-  var t1=S.habits.filter(function(h){return h.tier===1;});
-  var t2=S.habits.filter(function(h){return h.tier===2;});
-  var t3=S.habits.filter(function(h){return h.tier===3;});
   document.getElementById('m-txp').textContent='+'+log.xpEarned;
   document.getElementById('m-done').textContent=log.completed.length+'/'+S.habits.length;
   document.getElementById('m-streak').textContent=S.streak;
   document.getElementById('m-xp').textContent=S.xp;
-  document.getElementById('t1p').textContent=t1.filter(function(h){return isDone(h.id);}).length+'/'+t1.length;
-  document.getElementById('t2p').textContent=t2.filter(function(h){return isDone(h.id);}).length+'/'+t2.length;
-  document.getElementById('t3p').textContent=t3.filter(function(h){return isDone(h.id);}).length+'/'+t3.length;
-  document.getElementById('t1-list').innerHTML=t1.map(habitHTML).join('');
-  document.getElementById('t2-list').innerHTML=t2.map(habitHTML).join('');
-  document.getElementById('t3-list').innerHTML=t3.map(habitHTML).join('');
+  document.getElementById('habits-list').innerHTML=S.habits.map(habitHTML).join('');
 }
 
 function togDone(id){
@@ -595,32 +582,31 @@ function delHabit(id){
   save();renderToday();
 }
 
-function openAddHabit(tier){
-  var ex=document.getElementById('add-habit-form');if(ex)ex.remove();
-  var cols={1:'var(--t1)',2:'var(--t2)',3:'var(--t3)'};var nms={1:'Floor',2:'Engine',3:'Ceiling'};
-  var el=document.createElement('div');el.id='add-habit-form';el.className='iform';
-  el.innerHTML='<div class="iform-ttl" style="color:'+cols[tier]+'">'+nms[tier]+' habit</div>'
-    +'<input type="text" id="ahf-name" placeholder="Habit name">'
-    +'<div class="iform-row">'
-    +'<label>XP <input type="number" id="ahf-xp" value="20" min="1" style="width:70px;margin-bottom:0;display:inline-block"></label>'
-    +(tier===2?'<label><input type="checkbox" id="ahf-min"> MIN badge</label>':'')
-    +'<label><input type="checkbox" id="ahf-fail"> Can fail</label>'
-    +'</div>'
-    +'<div class="iform-actions">'
-    +'<button class="iform-submit" style="background:'+cols[tier]+';color:#0d0d0f" onclick="submitAddHabit('+tier+')">Add</button>'
-    +'<button class="iform-cancel" onclick="document.getElementById(\'add-habit-form\').remove()">Cancel</button>'
-    +'</div>';
-  document.getElementById('tier'+tier+'-section').appendChild(el);
-  document.getElementById('ahf-name').focus();
+function openAddHabit(){
+  var ex=document.getElementById("add-habit-form");if(ex)ex.remove();
+  var el=document.createElement("div");el.id="add-habit-form";el.className="iform";
+  el.innerHTML="<div class=\"iform-ttl\" style=\"color:var(--t1)\">New habit</div>"
+    +"<input type=\"text\" id=\"ahf-name\" placeholder=\"Habit name\">"
+    +"<div class=\"iform-row\">"
+    +"<label>XP <input type=\"number\" id=\"ahf-xp\" value=\"20\" min=\"1\" style=\"width:70px;margin-bottom:0;display:inline-block\"></label>"
+    +"<label><input type=\"checkbox\" id=\"ahf-fail\"> Can fail</label>"
+    +"</div>"
+    +"<div class=\"iform-actions\">"
+    +"<button class=\"iform-submit\" style=\"background:var(--t1);color:#0d0d0f\" onclick=\"submitAddHabit()\">Add</button>"
+    +"<button class=\"iform-cancel\" onclick=\"document.getElementById('add-habit-form').remove()\">Cancel</button>"
+    +"</div>";
+  document.getElementById("habits-section").appendChild(el);
+  document.getElementById("ahf-name").focus();
 }
 
-function submitAddHabit(tier){
-  var name=document.getElementById('ahf-name').value.trim();if(!name){document.getElementById('ahf-name').focus();return;}
-  var xp=parseInt(document.getElementById('ahf-xp').value)||20;
-  var me=document.getElementById('ahf-min'),fe=document.getElementById('ahf-fail');
-  S.habits.push({id:Date.now(),tier:tier,name:name,xp:xp,streak:0,min:me?me.checked:false,canFail:fe?fe.checked:false});
-  document.getElementById('add-habit-form').remove();save();renderToday();
+function submitAddHabit(){
+  var name=document.getElementById("ahf-name").value.trim();if(!name){document.getElementById("ahf-name").focus();return;}
+  var xp=parseInt(document.getElementById("ahf-xp").value)||20;
+  var fe=document.getElementById("ahf-fail");
+  S.habits.push({id:Date.now(),tier:1,name:name,xp:xp,streak:0,canFail:fe?fe.checked:false});
+  document.getElementById("add-habit-form").remove();save();renderToday();
 }
+
 
 function parseWork(raw){
   var s=String(raw).trim().toLowerCase();if(!s)return null;
@@ -1033,9 +1019,10 @@ var ACHIEVEMENTS=[
 
 function getSkillXP(tree){
   var total=0;
+  var ids=tree.habitIds;
   Object.keys(S.dailyLog).forEach(function(d){
     var l=S.dailyLog[d]||{completed:[]};
-    tree.habitIds.forEach(function(id){
+    ids.forEach(function(id){
       if((l.completed||[]).indexOf(id)!==-1){
         var h=null;S.habits.forEach(function(x){if(x.id===id)h=x;});
         if(h)total+=h.xp;
@@ -1045,19 +1032,59 @@ function getSkillXP(tree){
   return total;
 }
 
+function toggleSkillPanel(treeId){
+  var panel=document.getElementById('shp-'+treeId);
+  if(!panel)return;
+  var isOn=panel.classList.contains('on');
+  document.querySelectorAll('.skill-habit-panel').forEach(function(p){p.classList.remove('on');});
+  if(!isOn)panel.classList.add('on');
+}
+
+function toggleSkillHabit(treeId,habitId,checked){
+  var tree=null;SKILL_TREES.forEach(function(t){if(t.id===treeId)tree=t;});
+  if(!tree)return;
+  if(!S.skillHabitOverrides)S.skillHabitOverrides={};
+  if(!S.skillHabitOverrides[treeId])S.skillHabitOverrides[treeId]=tree.habitIds.slice();
+  var ids=S.skillHabitOverrides[treeId];
+  if(checked){if(ids.indexOf(habitId)===-1)ids.push(habitId);}
+  else{S.skillHabitOverrides[treeId]=ids.filter(function(x){return x!==habitId;});}
+  save();
+  // re-render just the XP display for this tree
+  renderSkills();
+}
+
+function getTreeHabitIds(tree){
+  if(S.skillHabitOverrides&&S.skillHabitOverrides[tree.id])return S.skillHabitOverrides[tree.id];
+  return tree.habitIds;
+}
+
 function renderSkills(){
+  if(!S.skillHabitOverrides)S.skillHabitOverrides={};
   // Skill trees
   var treesEl=document.getElementById('skill-trees');
+  var tierNames={1:'Floor',2:'Engine',3:'Ceiling'};
   treesEl.innerHTML=SKILL_TREES.map(function(tree){
-    var xp=getSkillXP(tree);
+    var activeIds=getTreeHabitIds(tree);
+    var treeForXP={id:tree.id,habitIds:activeIds,xpPerLevel:tree.xpPerLevel,levels:tree.levels,nodes:tree.nodes,color:tree.color,icon:tree.icon,name:tree.name};
+    var xp=getSkillXP(treeForXP);
     var lvl=Math.min(tree.levels.length-1,Math.floor(xp/tree.xpPerLevel));
     var lvlXP=xp%(tree.xpPerLevel);
     var pct=Math.round((lvlXP/tree.xpPerLevel)*100);
-    var nodes=tree.nodes.map(function(node,i){
+    var nodes=tree.nodes.map(function(node){
       var unlocked=xp>=node.xp;
       return '<div class="skill-node'+(unlocked?' unlocked':' locked')+'">'
         +'<div class="skill-node-name">'+xe(node.name)+'</div>'
         +'<div class="skill-node-req">'+(unlocked?'Unlocked':xe(node.req))+'</div>'
+        +'</div>';
+    }).join('');
+    // Habit assignment panel
+    var habitRows=S.habits.map(function(h){
+      var checked=activeIds.indexOf(h.id)!==-1;
+      return '<div class="shp-habit">'
+        +'<input type="checkbox" class="shp-check" '+(checked?'checked':'')
+        +' onchange="toggleSkillHabit(\''+tree.id+'\','+h.id+',this.checked)" onclick="event.stopPropagation()">'
+        +'<span class="shp-name">'+xe(h.name)+'</span>'
+        +'<span class="shp-tier">'+tierNames[h.tier]+'</span>'
         +'</div>';
     }).join('');
     return '<div class="skill-tree">'
@@ -1065,9 +1092,14 @@ function renderSkills(){
       +'<div class="skill-icon" style="background:rgba(255,255,255,.05)">'+tree.icon+'</div>'
       +'<div><div class="skill-tree-name" style="color:'+tree.color+'">'+xe(tree.name)+'</div>'
       +'<div class="skill-tree-lvl">'+tree.levels[lvl]+' &middot; Level '+(lvl+1)+' &middot; '+xp+' XP</div></div>'
+      +'<button class="skill-edit-btn" onclick="event.stopPropagation();toggleSkillPanel(\''+tree.id+'\')">edit habits</button>'
       +'</div>'
       +'<div class="skill-xp-bar"><div class="skill-xp-fill" style="width:'+pct+'%;background:'+tree.color+'"></div></div>'
       +'<div class="skill-nodes">'+nodes+'</div>'
+      +'<div class="skill-habit-panel" id="shp-'+tree.id+'">'
+      +'<div class="shp-lbl">Habits that contribute XP to this skill</div>'
+      +habitRows
+      +'</div>'
       +'</div>';
   }).join('');
 
