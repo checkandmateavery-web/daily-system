@@ -198,6 +198,7 @@ input[type=range]{accent-color:var(--t1);width:100%}
   <button onclick="show('history')">History</button>
   <button onclick="show('rewards')">Rewards</button>
   <button onclick="show('skills')">Skills</button>
+  <button onclick="show('tasks')">Tasks</button>
   <button onclick="show('mood')">Mood</button>
   <button onclick="show('data')">Data</button>
 </nav>
@@ -275,7 +276,7 @@ input[type=range]{accent-color:var(--t1);width:100%}
 </div>
 <div class="page" id="p-rewards">
   <p class="slbl" style="margin-top:0">Rewards</p>
-  <p style="font-size:13px;color:var(--mut);margin-bottom:16px;line-height:1.6">Set a goal, earn it, claim it. Each reward is tied to a specific milestone — approaches, sales, XP, or streak.</p>
+  <p style="font-size:13px;color:var(--mut);margin-bottom:16px;line-height:1.6">Set a goal, earn it, claim it. Each reward is tied to a specific milestone â approaches, sales, XP, or streak.</p>
   <div id="counters-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px"></div>
   <button onclick="openAddCounter()" style="width:100%;padding:7px;border:1px dashed var(--bdr);border-radius:8px;background:none;cursor:pointer;font-size:12px;color:var(--dim);font-family:inherit;margin-bottom:16px">+ add custom counter</button>
   <div id="rewards-list"></div>
@@ -283,6 +284,18 @@ input[type=range]{accent-color:var(--t1);width:100%}
   <div id="clear-old-btn" style="display:none;margin-top:8px">
     <button onclick="clearOldRewards()" style="width:100%;padding:8px;border:1px solid var(--red);border-radius:8px;background:none;cursor:pointer;font-size:12px;color:var(--red);font-family:inherit">Clear all old/broken rewards</button>
   </div>
+</div>
+<div class="page" id="p-tasks">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <p class="slbl" style="margin:0">Tasks</p>
+    <div style="display:flex;gap:6px">
+      <button id="task-filter-all" onclick="filterTasks('all')" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--t1);background:var(--t1);color:#0d0d0f;cursor:pointer;font-family:inherit">All</button>
+      <button id="task-filter-today" onclick="filterTasks('today')" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--bdr);background:none;cursor:pointer;color:var(--mut);font-family:inherit">Today</button>
+      <button id="task-filter-done" onclick="filterTasks('done')" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--bdr);background:none;cursor:pointer;color:var(--mut);font-family:inherit">Done</button>
+    </div>
+  </div>
+  <div id="tasks-list"></div>
+  <button class="add-btn" onclick="openAddTask()" style="margin-top:8px">+ add task</button>
 </div>
 <div class="page" id="p-mood">
   <p class="slbl" style="margin-top:0">Rate your day</p>
@@ -406,7 +419,7 @@ function updateActiveDateBanner(){
   var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   banner.style.display='block';
-  banner.textContent='Viewing: '+days[d.getDay()]+' '+months[d.getMonth()]+' '+p[2]+' — changes will be saved to this date';
+  banner.textContent='Viewing: '+days[d.getDay()]+' '+months[d.getMonth()]+' '+p[2]+' â changes will be saved to this date';
 }
 
 function wkStart(off){
@@ -439,10 +452,10 @@ function defState(){
     ],
     rewards:[
       {id:1,name:'Cirque du Soleil',conditions:[{metric:'approaches',target:50}],claimed:false,note:'50 approaches on the sprint'},
-      {id:2,name:'Full day off — no work guilt',conditions:[{metric:'approaches',target:25}],claimed:false,note:'25 approaches completed'},
+      {id:2,name:'Full day off â no work guilt',conditions:[{metric:'approaches',target:25}],claimed:false,note:'25 approaches completed'},
       {id:3,name:'Nice dinner out',conditions:[{metric:'sales',target:10}],claimed:false,note:'10 course sales'},
       {id:4,name:'Something you have been wanting to buy',conditions:[{metric:'streak',target:30}],claimed:false,note:'30-day sober streak'},
-      {id:5,name:'Full rest day — zero obligations',conditions:[{metric:'xp',target:2000}],claimed:false,note:'2000 total XP earned'}
+      {id:5,name:'Full rest day â zero obligations',conditions:[{metric:'xp',target:2000}],claimed:false,note:'2000 total XP earned'}
     ],
     sales:0,
     approachCount:0,
@@ -495,7 +508,7 @@ function load(){
   S.lastDate=t;show('today');
 }
 
-var TABS=['today','work','week','history','rewards','skills','mood','data'];
+var TABS=['today','work','week','history','rewards','skills','tasks','mood','data'];
 function show(name){
   TABS.forEach(function(n,i){
     document.getElementById('p-'+n).classList.toggle('on',n===name);
@@ -507,6 +520,7 @@ function show(name){
   if(name==='history')renderHistory();
   if(name==='rewards'){renderCounters();renderRewards();}
   if(name==='skills')renderSkills();
+  if(name==='tasks')renderTasks();
   if(name==='mood')renderMood();
   if(name==='data')renderDataPage();
 }
@@ -812,7 +826,7 @@ function renderRewards(){
         +'<div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px">'+xe(r.name||'Reward')+'</div>'
         +'<div style="font-size:12px;color:var(--mut);margin-bottom:8px">'+xe(r.note||'')+'</div>'
         +conds.map(function(c){
-          return '<div style="font-size:11px;color:var(--t1);font-family:monospace;margin-bottom:4px">'+(getMetricValue(c.metric)||0)+' / '+(c.target||0)+' '+metricLabel(c.metric)+' ✓</div>';
+          return '<div style="font-size:11px;color:var(--t1);font-family:monospace;margin-bottom:4px">'+(getMetricValue(c.metric)||0)+' / '+(c.target||0)+' '+metricLabel(c.metric)+' â</div>';
         }).join('')
         +'<div class="rprog" style="margin-top:6px"><div class="rpf" style="width:100%;background:var(--t1)"></div></div>'
         +'<div class="rfoot" style="margin-top:8px">'
@@ -829,7 +843,7 @@ function renderRewards(){
       if(!conds.length){
         return '<div class="rcard">'
           +'<div style="font-size:14px;font-weight:600;margin-bottom:4px">'+xe(r.name||'Reward')+'</div>'
-          +'<div style="font-size:12px;color:var(--red);margin-bottom:8px">Old format — tap x to delete and recreate</div>'
+          +'<div style="font-size:12px;color:var(--red);margin-bottom:8px">Old format â tap x to delete and recreate</div>'
           +'<div class="rfoot"><span></span><button class="del-btn" onclick="deleteReward('+r.id+')">x</button></div>'
           +'</div>';
       }
@@ -842,7 +856,7 @@ function renderRewards(){
           var tgt=c.target||1;
           var cp=Math.min(100,Math.round((cur/tgt)*100));
           var done=cp>=100;
-          return '<div style="font-size:11px;font-family:monospace;margin-bottom:4px;color:'+(done?'var(--t1)':'var(--mut)')+'">'+cur+' / '+tgt+' '+metricLabel(c.metric)+(done?' ✓':'')+'</div>';
+          return '<div style="font-size:11px;font-family:monospace;margin-bottom:4px;color:'+(done?'var(--t1)':'var(--mut)')+'">'+cur+' / '+tgt+' '+metricLabel(c.metric)+(done?' â':'')+'</div>';
         }).join('')
         +'<div class="rprog" style="margin-top:6px"><div class="rpf" style="width:'+pct+'%"></div></div>'
         +'<div class="rfoot" style="margin-top:6px">'
@@ -863,7 +877,7 @@ function renderRewards(){
   }
 
   if(!unlocked.length&&!locked.length&&!claimed.length){
-    html='<p style="font-size:13px;color:var(--mut);padding:12px 0">No rewards yet — add one below.</p>';
+    html='<p style="font-size:13px;color:var(--mut);padding:12px 0">No rewards yet â add one below.</p>';
   }
 
   document.getElementById('rewards-list').innerHTML=html;
@@ -885,7 +899,7 @@ function claimReward(id){
     S.xp-=r.xpCost;
   }
   r.claimed=true;
-  toast('Reward claimed: '+r.name+' — go enjoy it!');
+  toast('Reward claimed: '+r.name+' â go enjoy it!');
   save();renderRewards();renderHeader();
 }
 
@@ -909,7 +923,7 @@ function openAddReward(){
   el.innerHTML='<div class="iform-ttl" style="color:var(--t3)">New reward</div>'
     +'<input type="text" id="arf-name" placeholder="Reward name (e.g. Cirque du Soleil)">'
     +'<input type="text" id="arf-note" placeholder="Description">'
-    +'<p style="font-size:11px;color:var(--mut);margin-bottom:8px">Add one or more conditions — all must be met to unlock.</p>'
+    +'<p style="font-size:11px;color:var(--mut);margin-bottom:8px">Add one or more conditions â all must be met to unlock.</p>'
     +'<div id="arf-conditions">'
     +'<div class="arf-cond" style="display:flex;gap:8px;margin-bottom:8px;align-items:center">'
     +'<select class="arf-metric" style="flex:1;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:6px 8px;font-size:12px;color:var(--txt)">'
@@ -919,7 +933,7 @@ function openAddReward(){
     +'</div>'
     +'</div>'
     +'<button onclick="addARFCondition()" style="background:none;border:1px dashed var(--bdr);border-radius:7px;width:100%;padding:5px;font-size:11px;color:var(--mut);cursor:pointer;margin-bottom:8px">+ add another condition</button>'
-    +'<p style="font-size:11px;color:var(--mut);margin:8px 0 4px">XP cost to claim (optional — 0 for free)</p>'
+    +'<p style="font-size:11px;color:var(--mut);margin:8px 0 4px">XP cost to claim (optional â 0 for free)</p>'
     +'<input type="number" id="arf-xpcost" placeholder="0" value="0" min="0">'
     +'<div class="iform-actions">'
     +'<button class="iform-submit" style="background:var(--t3);color:#0d0d0f" onclick="submitAddReward()">Add reward</button>'
@@ -938,7 +952,7 @@ function addARFCondition(){
     +'<option value="approaches">Approaches</option><option value="sales">Sales</option><option value="streak">Sober days</option><option value="xp">Total XP</option>'
     +'</select>'
     +'<input type="number" class="arf-target" placeholder="Target" value="50" min="1" style="width:80px;margin-bottom:0;font-size:12px;padding:6px 8px">'
-    +'<button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--dim);font-size:16px;padding:0">×</button>';
+    +'<button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--dim);font-size:16px;padding:0">Ã</button>';
   container.appendChild(div);
 }
 
@@ -958,7 +972,7 @@ function submitAddReward(){
 }
 
 
-// ── COUNTERS ─────────────────────────────────────────────────────────────────
+// ââ COUNTERS âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 var BUILT_IN_COUNTERS=[
   {id:'approaches',label:'Approaches',color:'var(--t2)',skey:'approachCount'},
@@ -1007,7 +1021,7 @@ function adjustCounter(id,delta){
   S[key]=Math.max(0,(S[key]||0)+delta);
   var el=document.getElementById('cnt-'+id);
   if(el)el.textContent=S[key];
-  if(delta>0)toast('+1 '+id+' — total: '+S[key]);
+  if(delta>0)toast('+1 '+id+' â total: '+S[key]);
   save();renderRewards();
 }
 
@@ -1016,7 +1030,7 @@ function adjustCustomCounter(cid,delta){
   S.customCounts[cid]=Math.max(0,(S.customCounts[cid]||0)+delta);
   var el=document.getElementById('cnt-custom-'+cid);
   if(el)el.textContent=S.customCounts[cid];
-  if(delta>0)toast('+1 logged — total: '+S.customCounts[cid]);
+  if(delta>0)toast('+1 logged â total: '+S.customCounts[cid]);
   save();renderRewards();
 }
 
@@ -1061,7 +1075,7 @@ function claimReward(id){
     S.xp-=r.xpCost;
   }
   r.claimed=true;
-  toast('Reward claimed: '+r.name+' — go enjoy it!');
+  toast('Reward claimed: '+r.name+' â go enjoy it!');
   save();renderRewards();renderHeader();
 }
 
@@ -1390,7 +1404,7 @@ function doImport(input){
   reader.readAsText(file);
 }
 
-// ── SKILL TREES & ACHIEVEMENTS ──────────────────────────────────────────────
+// ââ SKILL TREES & ACHIEVEMENTS ââââââââââââââââââââââââââââââââââââââââââââââ
 
 var SKILL_TREES=[
   {
@@ -1597,6 +1611,15 @@ function renderSkills(){
     +(locked.length?'<p class="slbl" style="margin-top:8px">Locked</p><div class="ach-grid">'+locked.join('')+'</div>':'');
 }
 
+var taskFilter='all';
+function filterTasks(f){taskFilter=f;['all','today','done'].forEach(function(x){var b=document.getElementById('task-filter-'+x);if(!b)return;if(x===f){b.style.background='var(--t1)';b.style.color='#0d0d0f';b.style.borderColor='var(--t1)';}else{b.style.background='none';b.style.color='var(--mut)';b.style.borderColor='var(--bdr)';}});renderTasks();}
+function renderTasks(){var tasks=S.tasks||[];var today=dk();var filtered=tasks.filter(function(t){if(taskFilter==='done')return t.done;if(taskFilter==='today')return !t.done&&(t.due===today||!t.due);return !t.done;});filtered.sort(function(a,b){if(a.priority==='high'&&b.priority!=='high')return -1;if(b.priority==='high'&&a.priority!=='high')return 1;if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due&&!b.due)return -1;if(!a.due&&b.due)return 1;return 0;});var el=document.getElementById('tasks-list');if(!el)return;if(!filtered.length){el.innerHTML='<p style="font-size:13px;color:var(--dim);padding:8px 0">'+(taskFilter==='done'?'No completed tasks.':taskFilter==='today'?'No tasks for today.':'No open tasks. Add one below.')+'</p>';return;}el.innerHTML=filtered.map(function(t){var dc='task-due',dl='';if(t.due){if(t.due<today)dc+=' overdue';else if(t.due===today)dc+=' today';var dp=t.due.split('-');dl=dp[1]+'/'+dp[2];if(t.due<today)dl='Overdue: '+dl;else if(t.due===today)dl='Today';}return '<div class="task-item'+(t.done?' done':'')+'" id="task-'+t.id+'"><div class="task-pri '+(t.priority||'normal')+'"></div><div class="task-chk" onclick="toggleTask('+t.id+')"><svg width="10" height="10" viewBox="0 0 10 10" fill="none">'+(t.done?'<path d="M2 5l2 2 4-4" stroke="#0d0d0f" stroke-width="1.8" stroke-linecap="round"/>':'')+'</svg></div><div class="task-body"><div class="task-name">'+xe(t.name)+'</div><div class="task-meta"><span class="task-cat '+(t.category||'general')+'">'+xe(t.category||'general')+'</span>'+(t.xp?'<span class="task-xp">+'+t.xp+' XP</span>':'')+(dl?'<span class="'+dc+'">'+dl+'</span>':'')+'</div></div><div class="task-actions"><button class="task-edit-btn" onclick="openEditTask('+t.id+')">&#9998;</button><button class="task-edit-btn" onclick="deleteTask('+t.id+')" style="color:var(--dim)">&#215;</button></div></div>';}).join('');}
+function toggleTask(id){var t=null;(S.tasks||[]).forEach(function(x){if(x.id===id)t=x;});if(!t)return;t.done=!t.done;if(t.done&&t.xp){S.xp+=t.xp;var nl=Math.floor(S.xp/XPL)+1;if(nl>S.level){S.level=nl;toast('Level up! LVL '+S.level);}toast('Task done! +'+t.xp+' XP');t.completedDate=dk();}else if(!t.done&&t.xp&&t.completedDate){S.xp=Math.max(0,S.xp-t.xp);t.completedDate=null;}save();renderTasks();renderHeader();}
+function deleteTask(id){S.tasks=(S.tasks||[]).filter(function(t){return t.id!==id;});save();renderTasks();}
+function openAddTask(){var ex=document.getElementById('task-form');if(ex)ex.remove();var el=document.createElement('div');el.id='task-form';el.className='iform';el.innerHTML='<div class="iform-ttl" style="color:var(--t1)">New task</div><input type="text" id="tf-name" placeholder="Task name"><div class="iform-row" style="flex-wrap:wrap;gap:8px"><label style="font-size:12px">Category<br><select id="tf-cat" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--txt);margin-top:4px"><option value="general">General</option><option value="business">Business</option><option value="content">Content</option><option value="game">Game</option><option value="body">Body</option></select></label><label style="font-size:12px">Priority<br><select id="tf-pri" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--txt);margin-top:4px"><option value="normal">Normal</option><option value="high">High</option></select></label><label style="font-size:12px">XP<br><input type="number" id="tf-xp" value="20" min="0" style="width:70px;margin-bottom:0;margin-top:4px;display:inline-block;font-family:monospace"></label><label style="font-size:12px">Due<br><input type="date" id="tf-due" style="margin-bottom:0;margin-top:4px"></label></div><div class="iform-actions" style="margin-top:10px"><button class="iform-submit" style="background:var(--t1);color:#0d0d0f;border:none;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit" onclick="submitAddTask()">Add task</button><button class="iform-cancel" style="padding:7px 14px;background:none;border:1px solid var(--bdr);border-radius:8px;font-size:13px;cursor:pointer;color:var(--mut);font-family:inherit" onclick="document.getElementById(String.fromCharCode(39)+'task-form'+String.fromCharCode(39)).remove()">Cancel</button></div>';document.getElementById('tasks-list').after(el);document.getElementById('tf-name').focus();}
+function submitAddTask(){var name=document.getElementById('tf-name').value.trim();if(!name)return;if(!S.tasks)S.tasks=[];S.tasks.push({id:Date.now(),name:name,category:document.getElementById('tf-cat').value,priority:document.getElementById('tf-pri').value,xp:parseInt(document.getElementById('tf-xp').value)||0,due:document.getElementById('tf-due').value||null,done:false,createdDate:dk()});document.getElementById('task-form').remove();save();renderTasks();}
+function openEditTask(id){var t=null;(S.tasks||[]).forEach(function(x){if(x.id===id)t=x;});if(!t)return;var ex=document.getElementById('task-form');if(ex)ex.remove();window._eid=id;var el=document.createElement('div');el.id='task-form';el.className='iform';el.innerHTML='<div class="iform-ttl" style="color:var(--t2)">Edit task</div><input type="text" id="tf-name" value="'+xe(t.name)+'" placeholder="Task name"><div class="iform-row" style="flex-wrap:wrap;gap:8px"><label style="font-size:12px">Category<br><select id="tf-cat" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--txt);margin-top:4px"><option value="general"'+(t.category==='general'?' selected':'')+'>General</option><option value="business"'+(t.category==='business'?' selected':'')+'>Business</option><option value="content"'+(t.category==='content'?' selected':'')+'>Content</option><option value="game"'+(t.category==='game'?' selected':'')+'>Game</option><option value="body"'+(t.category==='body'?' selected':'')+'>Body</option></select></label><label style="font-size:12px">Priority<br><select id="tf-pri" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--txt);margin-top:4px"><option value="normal"'+(t.priority==='normal'?' selected':'')+'>Normal</option><option value="high"'+(t.priority==='high'?' selected':'')+'>High</option></select></label><label style="font-size:12px">XP<br><input type="number" id="tf-xp" value="'+(t.xp||0)+'" min="0" style="width:70px;margin-bottom:0;margin-top:4px;display:inline-block;font-family:monospace"></label><label style="font-size:12px">Due<br><input type="date" id="tf-due" value="'+(t.due||'')+'" style="margin-bottom:0;margin-top:4px"></label></div><div class="iform-actions" style="margin-top:10px"><button class="iform-submit" style="background:var(--t2);color:#0d0d0f;border:none;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit" onclick="submitEditTask()">Save</button><button class="iform-cancel" style="padding:7px 14px;background:none;border:1px solid var(--bdr);border-radius:8px;font-size:13px;cursor:pointer;color:var(--mut);font-family:inherit" onclick="document.getElementById(String.fromCharCode(39)+'task-form'+String.fromCharCode(39)).remove()">Cancel</button></div>';document.getElementById('tasks-list').after(el);document.getElementById('tf-name').focus();}
+function submitEditTask(){var id=window._eid;var t=null;(S.tasks||[]).forEach(function(x){if(x.id===id)t=x;});if(!t)return;t.name=document.getElementById('tf-name').value.trim()||t.name;t.xp=parseInt(document.getElementById('tf-xp').value)||0;t.due=document.getElementById('tf-due').value||null;t.category=document.getElementById('tf-cat').value;t.priority=document.getElementById('tf-pri').value;document.getElementById('task-form').remove();save();renderTasks();}
 function toast(msg){
   var t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('on');
