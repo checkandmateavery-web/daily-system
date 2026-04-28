@@ -445,7 +445,7 @@ function updateActiveDateBanner(){
   var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   banner.style.display='block';
-  banner.textContent='Viewing: '+days[d.getDay()]+' '+months[d.getMonth()]+' '+p[2]+' â changes will be saved to this date';
+  banner.textContent='Viewing: '+days[d.getDay()]+' '+months[d.getMonth()]+' '+p[2]+' Ã¢ÂÂ changes will be saved to this date';
 }
 
 function wkStart(off){
@@ -611,7 +611,18 @@ function renderToday(){
   document.getElementById('m-streak').textContent=S.streak;
   document.getElementById('m-xp').textContent=S.xp;
 
-  document.getElementById('habits-list').innerHTML=S.habits.map(habitHTML).join('');
+  var tiers=[{key:'ceiling',label:'CEILING',color:'var(--t1)'},{key:'engine',label:'ENGINE',color:'var(--t2)'},{key:'floor',label:'FLOOR',color:'var(--grn)'}];
+  var html='';
+  tiers.forEach(function(tier){
+    var th=S.habits.filter(function(h){return h.tier===tier.key;});
+    if(!th.length)return;
+    html+='<div style="margin-bottom:4px;margin-top:14px"><span style="font-size:10px;font-family:var(--mono);font-weight:700;letter-spacing:.08em;color:'+tier.color+'">'+tier.label+'</span></div>';
+    html+=th.map(habitHTML).join('');
+  });
+  // fallback: habits with no tier
+  var noTier=S.habits.filter(function(h){return !h.tier;});
+  if(noTier.length)html+=noTier.map(habitHTML).join('');
+  document.getElementById('habits-list').innerHTML=html;
 }
 
 function togDone(id){
@@ -860,7 +871,7 @@ function renderRewards(){
         +'<div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px">'+xe(r.name||'Reward')+'</div>'
         +'<div style="font-size:12px;color:var(--mut);margin-bottom:8px">'+xe(r.note||'')+'</div>'
         +conds.map(function(c){
-          return '<div style="font-size:11px;color:var(--t1);font-family:monospace;margin-bottom:4px">'+(getMetricValue(c.metric)||0)+' / '+(c.target||0)+' '+metricLabel(c.metric)+' â</div>';
+          return '<div style="font-size:11px;color:var(--t1);font-family:monospace;margin-bottom:4px">'+(getMetricValue(c.metric)||0)+' / '+(c.target||0)+' '+metricLabel(c.metric)+' Ã¢ÂÂ</div>';
         }).join('')
         +'<div class="rprog" style="margin-top:6px"><div class="rpf" style="width:100%;background:var(--t1)"></div></div>'
         +'<div class="rfoot" style="margin-top:8px">'
@@ -877,7 +888,7 @@ function renderRewards(){
       if(!conds.length){
         return '<div class="rcard">'
           +'<div style="font-size:14px;font-weight:600;margin-bottom:4px">'+xe(r.name||'Reward')+'</div>'
-          +'<div style="font-size:12px;color:var(--red);margin-bottom:8px">Old format â tap x to delete and recreate</div>'
+          +'<div style="font-size:12px;color:var(--red);margin-bottom:8px">Old format Ã¢ÂÂ tap x to delete and recreate</div>'
           +'<div class="rfoot"><span></span><button class="del-btn" onclick="deleteReward('+r.id+')">x</button></div>'
           +'</div>';
       }
@@ -890,7 +901,7 @@ function renderRewards(){
           var tgt=c.target||1;
           var cp=Math.min(100,Math.round((cur/tgt)*100));
           var done=cp>=100;
-          return '<div style="font-size:11px;font-family:monospace;margin-bottom:4px;color:'+(done?'var(--t1)':'var(--mut)')+'">'+cur+' / '+tgt+' '+metricLabel(c.metric)+(done?' â':'')+'</div>';
+          return '<div style="font-size:11px;font-family:monospace;margin-bottom:4px;color:'+(done?'var(--t1)':'var(--mut)')+'">'+cur+' / '+tgt+' '+metricLabel(c.metric)+(done?' Ã¢ÂÂ':'')+'</div>';
         }).join('')
         +'<div class="rprog" style="margin-top:6px"><div class="rpf" style="width:'+pct+'%"></div></div>'
         +'<div class="rfoot" style="margin-top:6px">'
@@ -911,7 +922,7 @@ function renderRewards(){
   }
 
   if(!unlocked.length&&!locked.length&&!claimed.length){
-    html='<p style="font-size:13px;color:var(--mut);padding:12px 0">No rewards yet â add one below.</p>';
+    html='<p style="font-size:13px;color:var(--mut);padding:12px 0">No rewards yet Ã¢ÂÂ add one below.</p>';
   }
 
   document.getElementById('rewards-list').innerHTML=html;
@@ -933,7 +944,7 @@ function claimReward(id){
     S.xp-=r.xpCost;
   }
   r.claimed=true;
-  toast('Reward claimed: '+r.name+' â go enjoy it!');
+  toast('Reward claimed: '+r.name+' Ã¢ÂÂ go enjoy it!');
   save();renderRewards();renderHeader();
 }
 
@@ -957,7 +968,7 @@ function openAddReward(){
   el.innerHTML='<div class="iform-ttl" style="color:var(--t3)">New reward</div>'
     +'<input type="text" id="arf-name" placeholder="Reward name (e.g. Cirque du Soleil)">'
     +'<input type="text" id="arf-note" placeholder="Description">'
-    +'<p style="font-size:11px;color:var(--mut);margin-bottom:8px">Add one or more conditions â all must be met to unlock.</p>'
+    +'<p style="font-size:11px;color:var(--mut);margin-bottom:8px">Add one or more conditions Ã¢ÂÂ all must be met to unlock.</p>'
     +'<div id="arf-conditions">'
     +'<div class="arf-cond" style="display:flex;gap:8px;margin-bottom:8px;align-items:center">'
     +'<select class="arf-metric" style="flex:1;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:6px 8px;font-size:12px;color:var(--txt)">'
@@ -968,7 +979,7 @@ function openAddReward(){
     +'</div>'
     +'</div>'
     +'<button onclick="addARFCondition()" style="background:none;border:1px dashed var(--bdr);border-radius:7px;width:100%;padding:5px;font-size:11px;color:var(--mut);cursor:pointer;margin-bottom:8px">+ add another condition</button>'
-    +'<p style="font-size:11px;color:var(--mut);margin:8px 0 4px">XP cost to claim (optional â 0 for free)</p>'
+    +'<p style="font-size:11px;color:var(--mut);margin:8px 0 4px">XP cost to claim (optional Ã¢ÂÂ 0 for free)</p>'
     +'<input type="number" id="arf-xpcost" placeholder="0" value="0" min="0">'
     +'<div class="iform-actions">'
     +'<button class="iform-submit" style="background:var(--t3);color:#0d0d0f" onclick="submitAddReward()">Add reward</button>'
@@ -989,7 +1000,7 @@ function addARFCondition(){
     +customOpts
     +'</select>'
     +'<input type="number" class="arf-target" placeholder="Target" value="50" min="1" style="width:80px;margin-bottom:0;font-size:12px;padding:6px 8px">'
-    +'<button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--dim);font-size:16px;padding:0">Ã</button>';
+    +'<button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--dim);font-size:16px;padding:0">ÃÂ</button>';
   container.appendChild(div);
 }
 
@@ -1009,7 +1020,7 @@ function submitAddReward(){
 }
 
 
-// ââ COUNTERS âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// Ã¢ÂÂÃ¢ÂÂ COUNTERS Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 var BUILT_IN_COUNTERS=[
   {id:'approaches',label:'Approaches',color:'var(--t2)',skey:'approachCount'},
@@ -1058,7 +1069,7 @@ function adjustCounter(id,delta){
   S[key]=Math.max(0,(S[key]||0)+delta);
   var el=document.getElementById('cnt-'+id);
   if(el)el.textContent=S[key];
-  if(delta>0)toast('+1 '+id+' â total: '+S[key]);
+  if(delta>0)toast('+1 '+id+' Ã¢ÂÂ total: '+S[key]);
   save();renderRewards();
 }
 
@@ -1067,7 +1078,7 @@ function adjustCustomCounter(cid,delta){
   S.customCounts[cid]=Math.max(0,(S.customCounts[cid]||0)+delta);
   var el=document.getElementById('cnt-custom-'+cid);
   if(el)el.textContent=S.customCounts[cid];
-  if(delta>0)toast('+1 logged â total: '+S.customCounts[cid]);
+  if(delta>0)toast('+1 logged Ã¢ÂÂ total: '+S.customCounts[cid]);
   save();renderRewards();
 }
 
@@ -1112,7 +1123,7 @@ function claimReward(id){
     S.xp-=r.xpCost;
   }
   r.claimed=true;
-  toast('Reward claimed: '+r.name+' â go enjoy it!');
+  toast('Reward claimed: '+r.name+' Ã¢ÂÂ go enjoy it!');
   save();renderRewards();renderHeader();
 }
 
@@ -1441,11 +1452,11 @@ function doImport(input){
   reader.readAsText(file);
 }
 
-// ââ SKILL TREES & ACHIEVEMENTS ââââââââââââââââââââââââââââââââââââââââââââââ
+// Ã¢ÂÂÃ¢ÂÂ SKILL TREES & ACHIEVEMENTS Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 var SKILL_TREES=[
   {
-    id:'dating',name:'Dating',icon:'â',color:'#f56ab4',
+    id:'dating',name:'Dating',icon:'Ã¢ÂÂ',color:'#f56ab4',
     habitIds:[202,302,303,203,204],
     levels:['Novice','Approach Taker','Social Animal','Player','Elite'],
     xpPerLevel:200,
@@ -1458,7 +1469,7 @@ var SKILL_TREES=[
     ]
   },
   {
-    id:'content',name:'Content',icon:'â¶',color:'#6ab4f5',
+    id:'content',name:'Content',icon:'Ã¢ÂÂ¶',color:'#6ab4f5',
     habitIds:[205,304],
     levels:['Creator','Consistent','Growing','Authority','Viral'],
     xpPerLevel:200,
@@ -1471,7 +1482,7 @@ var SKILL_TREES=[
     ]
   },
   {
-    id:'discipline',name:'Discipline',icon:'â',color:'#c8f56a',
+    id:'discipline',name:'Discipline',icon:'Ã¢ÂÂ',color:'#c8f56a',
     habitIds:[101,103,104,105],
     levels:['Starting','Building','Solid','Iron','Unbreakable'],
     xpPerLevel:300,
@@ -1484,7 +1495,7 @@ var SKILL_TREES=[
     ]
   },
   {
-    id:'body',name:'Body',icon:'â',color:'#f5a86a',
+    id:'body',name:'Body',icon:'Ã¢ÂÂ',color:'#f5a86a',
     habitIds:[305,102],
     levels:['Inactive','Moving','Active','Athletic','Peak'],
     xpPerLevel:150,
@@ -1499,19 +1510,19 @@ var SKILL_TREES=[
 ];
 
 var ACHIEVEMENTS=[
-  {id:'sober30',icon:'â',name:'30 Days Sober',desc:'30 consecutive sobriety check-ins',check:function(s){return s.soberDays>=30;}},
-  {id:'sober100',icon:'â',name:'100 Days Sober',desc:'100 consecutive days clean',check:function(s){return s.soberDays>=100;}},
-  {id:'streak7',icon:'â',name:'Week Warrior',desc:'7-day habit streak',check:function(s){return s.streak>=7;}},
-  {id:'streak30',icon:'â',name:'Month of Momentum',desc:'30-day habit streak',check:function(s){return s.streak>=30;}},
-  {id:'lvl5',icon:'â¦',name:'Level 5',desc:'Reach level 5',check:function(s){return s.level>=5;}},
-  {id:'lvl10',icon:'â',name:'Level 10',desc:'Reach level 10',check:function(s){return s.level>=10;}},
-  {id:'xp1000',icon:'â',name:'XP Millionaire',desc:'Earn 1000 total XP',check:function(s){return s.xp>=1000;}},
-  {id:'xp5000',icon:'â²',name:'XP Legend',desc:'Earn 5000 total XP',check:function(s){return s.xp>=5000;}},
-  {id:'perfectday',icon:'Â·',name:'Perfect Day',desc:'Complete every single habit in a day',check:function(s){
+  {id:'sober30',icon:'Ã¢ÂÂ',name:'30 Days Sober',desc:'30 consecutive sobriety check-ins',check:function(s){return s.soberDays>=30;}},
+  {id:'sober100',icon:'Ã¢ÂÂ',name:'100 Days Sober',desc:'100 consecutive days clean',check:function(s){return s.soberDays>=100;}},
+  {id:'streak7',icon:'Ã¢ÂÂ',name:'Week Warrior',desc:'7-day habit streak',check:function(s){return s.streak>=7;}},
+  {id:'streak30',icon:'Ã¢ÂÂ',name:'Month of Momentum',desc:'30-day habit streak',check:function(s){return s.streak>=30;}},
+  {id:'lvl5',icon:'Ã¢ÂÂ¦',name:'Level 5',desc:'Reach level 5',check:function(s){return s.level>=5;}},
+  {id:'lvl10',icon:'Ã¢ÂÂ',name:'Level 10',desc:'Reach level 10',check:function(s){return s.level>=10;}},
+  {id:'xp1000',icon:'Ã¢ÂÂ',name:'XP Millionaire',desc:'Earn 1000 total XP',check:function(s){return s.xp>=1000;}},
+  {id:'xp5000',icon:'Ã¢ÂÂ²',name:'XP Legend',desc:'Earn 5000 total XP',check:function(s){return s.xp>=5000;}},
+  {id:'perfectday',icon:'ÃÂ·',name:'Perfect Day',desc:'Complete every single habit in a day',check:function(s){
     var dates=Object.keys(s.dailyLog);
     return dates.some(function(d){var l=s.dailyLog[d];return l.completed&&l.completed.length>=s.habits.length&&s.habits.length>0;});
   }},
-  {id:'perfectweek',icon:'â',name:'Perfect Week',desc:'Complete all floor habits every day for 7 days',check:function(s){
+  {id:'perfectweek',icon:'Ã¢ÂÂ',name:'Perfect Week',desc:'Complete all floor habits every day for 7 days',check:function(s){
     var t1=s.habits.filter(function(h){return h.tier===1;});
     if(!t1.length)return false;
     var dates=Object.keys(s.dailyLog).sort().slice(-7);
@@ -1521,23 +1532,23 @@ var ACHIEVEMENTS=[
       return t1.every(function(h){return l.completed.indexOf(h.id)!==-1;});
     });
   }},
-  {id:'workhorse',icon:'â¬¡',name:'Workhorse',desc:'Log 8+ hours in a single day',check:function(s){
+  {id:'workhorse',icon:'Ã¢Â¬Â¡',name:'Workhorse',desc:'Log 8+ hours in a single day',check:function(s){
     return Object.keys(s.dailyLog).some(function(d){
       var l=s.dailyLog[d]||{workSessions:[]};
       return (l.workSessions||[]).reduce(function(a,ws){return a+ws.hrs;},0)>=8;
     });
   }},
-  {id:'nightgamer',icon:'â',name:'Night Owl',desc:'Complete nightgame habit 10 times',check:function(s){
+  {id:'nightgamer',icon:'Ã¢ÂÂ',name:'Night Owl',desc:'Complete nightgame habit 10 times',check:function(s){
     return Object.keys(s.dailyLog).filter(function(d){
       return (s.dailyLog[d].completed||[]).indexOf(303)!==-1;
     }).length>=10;
   }},
-  {id:'daygamer',icon:'â',name:'Daylight Killer',desc:'Complete daygame 20 times',check:function(s){
+  {id:'daygamer',icon:'Ã¢ÂÂ',name:'Daylight Killer',desc:'Complete daygame 20 times',check:function(s){
     return Object.keys(s.dailyLog).filter(function(d){
       return (s.dailyLog[d].completed||[]).indexOf(202)!==-1;
     }).length>=20;
   }},
-  {id:'meditator',icon:'â¯',name:'Mind Master',desc:'Meditate 30 times',check:function(s){
+  {id:'meditator',icon:'Ã¢ÂÂ¯',name:'Mind Master',desc:'Meditate 30 times',check:function(s){
     return Object.keys(s.dailyLog).filter(function(d){
       return (s.dailyLog[d].completed||[]).indexOf(309)!==-1;
     }).length>=30;
@@ -1648,7 +1659,7 @@ function renderSkills(){
     +(locked.length?'<p class="slbl" style="margin-top:8px">Locked</p><div class="ach-grid">'+locked.join('')+'</div>':'');
 }
 
-// ââ TASKS ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// Ã¢ÂÂÃ¢ÂÂ TASKS Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 var taskFilter='all';
 
@@ -1710,8 +1721,8 @@ function renderTasks(){
       +(dueLabel?'<span class="'+dueClass+'">'+dueLabel+'</span>':'')
       +'</div></div>'
       +'<div class="task-actions">'
-      +'<button class="task-edit-btn" onclick="openEditTask('+t.id+')" title="Edit">â</button>'
-      +'<button class="task-edit-btn" onclick="deleteTask('+t.id+')" title="Delete" style="color:var(--dim)">Ã</button>'
+      +'<button class="task-edit-btn" onclick="openEditTask('+t.id+')" title="Edit">Ã¢ÂÂ</button>'
+      +'<button class="task-edit-btn" onclick="deleteTask('+t.id+')" title="Delete" style="color:var(--dim)">ÃÂ</button>'
       +'</div>'
       +'</div>';
   }).join('');
