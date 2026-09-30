@@ -167,6 +167,16 @@ nav.main a:hover{color:var(--gold-2)}
 .step p{font-size:15.5px}
 .center-cta{text-align:center;margin-top:44px}
 
+
+/* About / family */
+.about{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+.photo{border-radius:18px;overflow:hidden;box-shadow:var(--shadow-lg);background:var(--bg-2)}
+.photo img{width:100%;height:auto}
+.about h2{font-size:clamp(30px,3.6vw,42px);margin-bottom:16px}
+.about p{margin-bottom:16px}
+.about .btn{margin-top:8px}
+.team-photo{max-width:760px;margin:0 auto 48px}
+
 /* Attorneys */
 .team{background:var(--bg-2)}
 .team-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
@@ -234,7 +244,8 @@ footer .logo{margin-bottom:16px}
 }
 @media (max-width:900px){
   .hero .wrap{grid-template-columns:1fr;padding-top:56px;padding-bottom:64px;gap:40px}
-  .why-grid,.steps,.team-grid,.quotes{grid-template-columns:1fr}
+  .why-grid,.steps,.team-grid,.quotes,.about{grid-template-columns:1fr}
+  .about{gap:32px}
   .final{grid-template-columns:1fr;padding:44px 28px}
   .foot-grid{grid-template-columns:1fr 1fr}
   .section{padding:72px 0}
@@ -496,6 +507,20 @@ footer .logo{margin-bottom:16px}
   </div>
 </section>
 
+<!-- ABOUT / FAMILY -->
+<section class="section" style="padding-top:0">
+  <div class="wrap about">
+    <figure class="photo reveal"><img src="img/family.jpg" alt="Jeffrey T. Brei and Suzanne L. Brei with their family in the Tucson desert" width="854" height="686" loading="lazy"></figure>
+    <div class="reveal">
+      <span class="eyebrow">Your Tucson lawyers</span>
+      <h2>A Tucson family firm, serving Tucson families since 1997.</h2>
+      <p>The Brei Law Firm is an experienced, committed and diligent group of Real Estate, Construction, Business and Personal Injury lawyers practicing in Tucson, Arizona.</p>
+      <p>When you call, you talk to people who live here, know the local courts and care how your case turns out. We look forward to assisting you, your family or your business with your legal matter.</p>
+      <a href="#consult" class="btn btn-cta">Talk to Our Team</a>
+    </div>
+  </div>
+</section>
+
 <!-- ATTORNEYS -->
 <section class="section team" id="team">
   <div class="wrap">
@@ -503,6 +528,7 @@ footer .logo{margin-bottom:16px}
       <span class="eyebrow">Meet your attorneys</span>
       <h2>Experienced advocates who know Tucson.</h2>
     </div>
+    <figure class="photo team-photo reveal"><img src="img/team.jpg" alt="The Brei Law Firm team outside the Tucson office" width="596" height="394" loading="lazy"></figure>
     <div class="team-grid">
       <!-- Replace .atty-photo initials with professional headshots: <img src="..." alt="Jeffrey T. Brei"> -->
       <article class="atty reveal">
